@@ -15,7 +15,7 @@ The pin map comes from static analysis of the stock firmware, not from the PCB.
 
 - [x] Key Scan (every key checked on an Air75 with a Mac host, and in the simulator)
 - [x] RGB Matrix (every key and the side lights, checked on an Air75; settings persist across power cycles)
-- [~] Wireless: Bluetooth (BLE) pairs and types on an Air75 with a Mac host, the battery level shows, and the Apple fn byte works over it; 2.4G should work (same link and driver as the Air60) but has not been checked on an Air75. Bluetooth 1 is the default link (after a flash or a factory reset)
+- [x] Wireless: Bluetooth (BLE) and the 2.4G dongle both work on an Air75 with a Mac host; over BLE it pairs and types, the battery level shows, and the Apple fn byte works. Bluetooth 1 is the default link (after a flash or a factory reset)
 - [x] Sleep (the Air60 parking sequence plus the stock Air75 extras): on Bluetooth after about 5 minutes idle, waking on a key and reconnecting; over USB when the host sleeps, resuming with it. Checked on an Air75
 
 ## Boot escape

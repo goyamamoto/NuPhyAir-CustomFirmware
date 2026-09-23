@@ -10,7 +10,7 @@
 ## できること
 
 - 全キー、Mac/Win 切り替えスイッチ、キーごとの RGB とサイドライト、電源を切っても残る設定
-- USB と Bluetooth。Bluetooth は 3 スロットで、名前は `Air75-1`〜`Air75-3`。2.4 GHz のドングルも動くはず（smk の Air60 版と同じ無線と処理）だが、Air75 の実機では確認していない
+- USB、Bluetooth（3 スロットで、名前は `Air75-1`〜`Air75-3`）、2.4 GHz のドングル
 - スリープ: Bluetooth では約 5 分の無操作で眠り、キーで起きる。USB ではホストのスリープに合わせて眠る
 - **Apple の fn キー**: macOS では F 列が Apple のキーボードと同じように動く（メディアキー、Fn で F1〜F12）
 - **US-JIS**（Fn+Tab、`usjis` レイアウト）: キーボード配列を日本語（JIS）にしたホストで、US 配列の刻印どおりに入力できる（Win レイヤー）
@@ -31,7 +31,7 @@
 
 | キーボード | USB ID | 状態 |
 | --- | --- | --- |
-| NuPhy Air75 初代（V1）、ANSI | 05ac:024f、製品名 "Air75" | 動作。macOS のホストで実機確認済み（US-JIS は Win レイヤーで確認） |
+| NuPhy Air75 初代（V1）、ANSI | 05ac:024f、製品名 "Air75" | 動作。macOS のホストで、USB、Bluetooth、2.4 GHz のドングルのそれぞれを実機で確認済み（US-JIS は Win レイヤーで確認） |
 
 Air75 V2 と V3 には使えません（STM32 を使い、NuPhy の QMK ベースのファームウェアで動いています）。NuPhy Air60 V2 については、QMK への移植 [goyamamoto/qmk-firmware](https://github.com/goyamamoto/qmk-firmware/tree/air60v2) を見てください。
 
@@ -95,7 +95,6 @@ python3 -m unittest discover -s tests -p test_air75_usjis.py  # US-JIS のテス
 
 ## 既知の制限
 
-- 2.4 GHz のドングルは動くはず（Air75 の無線の接続と処理は、2.4 GHz が動いている Air60 と同じ）だが、Air75 の実機では確認していない。
 - イメージを書き込むと設定が初期化される（sinowisp が設定の領域を 0 で埋めるため）。接続先は Bluetooth スロット 1 から始まる。
 - 同梱のイメージは debug ビルドで、smk の HID デバッグコンソールも入っている（`tools/smk-console` で読める）。
 - ペアリングには約 6 秒の長押しが要る（純正は 3〜4 秒）。

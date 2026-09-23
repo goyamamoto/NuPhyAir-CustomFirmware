@@ -10,7 +10,7 @@ Open-source firmware for the original NuPhy Air75 (the first model, "V1"; MCU BY
 ## What it does
 
 - All keys, the Mac/Win switch, per-key RGB and the side lights, settings kept across power cycles
-- USB and Bluetooth, three Bluetooth slots named `Air75-1` to `Air75-3`. The 2.4 GHz dongle should work too (same radio and driver as smk's Air60 port), but it has not been tried on an Air75
+- USB, Bluetooth (three slots named `Air75-1` to `Air75-3`) and the 2.4 GHz dongle
 - Sleep: on Bluetooth after about 5 minutes idle (a key wakes it), and over USB together with the host
 - **Apple fn**: on macOS the F-row behaves as on an Apple keyboard (media keys, F1-F12 with Fn)
 - **US-JIS** (Fn+Tab, `usjis` layout): type what the US keycaps show on a host set to the Japanese keyboard layout (Win layer)
@@ -31,7 +31,7 @@ Every image has the Apple fn key, the boot escape, the Bluetooth names and sleep
 
 | Keyboard | USB ID | Status |
 | --- | --- | --- |
-| NuPhy Air75, first model (V1), ANSI | 05ac:024f, product "Air75" | Works; checked on the board with macOS hosts (US-JIS in the Win layer) |
+| NuPhy Air75, first model (V1), ANSI | 05ac:024f, product "Air75" | Works; checked on the board with macOS hosts over USB, Bluetooth and the 2.4 GHz dongle (US-JIS in the Win layer) |
 
 Not for the Air75 V2 or V3: those use an STM32 and run NuPhy's QMK-based firmware. For the NuPhy Air60 V2, see the QMK port in [goyamamoto/qmk-firmware](https://github.com/goyamamoto/qmk-firmware/tree/air60v2).
 
@@ -95,7 +95,6 @@ Technical notes for the board (pins, Apple fn, US-JIS, mod-taps, boot escape) ar
 
 ## Known limitations
 
-- The 2.4 GHz dongle should work (the Air75 uses the same radio link and driver as the Air60, where it works), but it has not been checked on an Air75.
 - Writing any image resets the settings (sinowisp zero-fills the settings area); the link then starts on Bluetooth slot 1.
 - The prebuilt image is a debug build: it also carries smk's HID debug console (read with `tools/smk-console`).
 - Pairing needs a hold of about 6 s (the stock firmware takes 3-4 s).
