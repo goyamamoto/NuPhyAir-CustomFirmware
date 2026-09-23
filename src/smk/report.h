@@ -5,7 +5,14 @@
 #include "keycodes.h"
 
 #define KEYBOARD_REPORT_SIZE 8
-#define KEYBOARD_REPORT_KEYS 6
+#ifdef APPLE_FN
+// Same layout as Apple keyboards (and the stock NuPhy firmware): five key slots,
+// then the Apple "fn" byte (Usage Page 0xFF, Usage 0x03) in place of the sixth.
+// macOS remaps F1-F12 on an Apple-ID keyboard unless it sees fn held.
+#    define KEYBOARD_REPORT_KEYS 5
+#else
+#    define KEYBOARD_REPORT_KEYS 6
+#endif
 
 #define NKRO_REPORT_BITS 20 // limited by wireless dongle hid descriptor
 #define NKRO_REPORT_SIZE 2 + NKRO_REPORT_BITS
@@ -42,6 +49,9 @@ typedef union {
         uint8_t mods;
         uint8_t reserved;
         uint8_t keys[KEYBOARD_REPORT_KEYS];
+#ifdef APPLE_FN
+        uint8_t apple_fn;
+#endif
     };
 } report_keyboard_t;
 
@@ -66,6 +76,11 @@ extern report_keyboard_t keyboard_report;
 extern report_nkro_t     nkro_report;
 
 void send_keyboard_report();
+
+#ifdef APPLE_FN
+// Tell the report path whether an Apple-fn layer key is held (see report.c).
+void report_apple_fn_hold(bool held);
+#endif
 
 void add_key_to_report(report_keyboard_t *keyboard_report, uint8_t key);
 void del_key_from_report(report_keyboard_t *keyboard_report, uint8_t key);

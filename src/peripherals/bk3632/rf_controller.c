@@ -17,8 +17,10 @@ typedef enum {
     RF_SET_NAME_BT3 = 0x01
 } rf_set_name_t;
 
+#ifndef RF_BT_NAME
 static const __code char rf_bt5_name[] = "SMK BT5.0";
 static const __code char rf_bt3_name[] = "SMK BT3.0";
+#endif
 
 uint8_t rf_tx_buf[32];
 
@@ -63,6 +65,45 @@ void    rf_wake_nudge();
 void    rf_fetch_4();
 uint8_t checksum(uint8_t *data, int len);
 
+#ifdef RF_BT_NAME
+// Each Bluetooth slot gets its own name, RF_BT_NAME "-<slot>" over BLE and the
+// same with " BT3.0" over classic Bluetooth, set when the link moves to another
+// slot, so a host sees which slot it paired with. Only on a change of slot, and
+// never right before a pairing command: the module drops a pairing command that
+// follows a name change closely (seen on an Air75), and a long press to pair
+// selects the slot, and so names it, several seconds before it pairs.
+static uint8_t named_slot = 0xFF;
+
+static void rf_set_slot_names(uint8_t link)
+{
+    static const __code char base[]    = RF_BT_NAME;
+    static const __code char classic[] = " BT3.0";
+    static char              name[24];
+
+    if (link == named_slot) {
+        return;
+    }
+    named_slot = link;
+
+    uint8_t n = 0;
+    for (uint8_t i = 0; base[i] && n < sizeof(name) - sizeof(classic) - 2; i++) {
+        name[n++] = base[i];
+    }
+    name[n++] = '-';
+    name[n++] = (char)('0' + link);
+    name[n]   = 0;
+    rf_set_bt_name(RF_SET_NAME_BT5, name);
+    delay_ms(50);
+
+    for (uint8_t i = 0; classic[i]; i++) {
+        name[n++] = classic[i];
+    }
+    name[n] = 0;
+    rf_set_bt_name(RF_SET_NAME_BT3, name);
+    delay_ms(50);
+}
+#endif
+
 void rf_init()
 {
     uint8_t status_bytes[2];
@@ -82,10 +123,14 @@ void rf_init()
         }
     }
 
+#ifdef RF_BT_NAME
+    rf_set_slot_names(RF_MODE_BT1);
+#else
     rf_set_bt_name(RF_SET_NAME_BT5, rf_bt5_name);
     delay_ms(50);
     rf_set_bt_name(RF_SET_NAME_BT3, rf_bt3_name);
     delay_ms(5);
+#endif
 
     rf_set_link(RF_MODE_2_4G);
 }
@@ -118,8 +163,16 @@ uint8_t kro6buffer[6];
 static uint8_t rf_pending_buf[6];
 static bool    rf_pending;
 
+#ifdef APPLE_FN
+// Byte 9 of the report frame is the Apple fn state, as in the stock firmware.
+static uint8_t rf_apple_fn;
+#endif
+
 void rf_send_report(__xdata report_keyboard_t *report)
 {
+#ifdef APPLE_FN
+    rf_apple_fn = report->apple_fn;
+#endif
     rf_pending_buf[0] = report->raw[0];
     rf_pending_buf[1] = report->raw[2];
     rf_pending_buf[2] = report->raw[3];
@@ -237,6 +290,11 @@ void rf_link_supervisor(keyboard_state_t *keyboard)
 
 void rf_set_link(rf_mode_t link)
 {
+#ifdef RF_BT_NAME
+    if (link != RF_MODE_2_4G) {
+        rf_set_slot_names((uint8_t)link);
+    }
+#endif
     commanded_link = (uint8_t)link;
     rf_set_link_mode(link, 0);
     delay_ms(20);
@@ -415,7 +473,11 @@ bool rf_send_kro_report(uint8_t *buffer)
             break;
         }
     }
+#ifdef APPLE_FN
+    rf_tx_buf[9] = (buffer == empty_buf) ? 0 : rf_apple_fn;
+#else
     rf_tx_buf[9] = compute_byte9(active);
+#endif
 
     for (int i = 10; i < 31; i++) {
         rf_tx_buf[i] = 0x00;

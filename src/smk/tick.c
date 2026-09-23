@@ -24,10 +24,23 @@ void tick_init(void)
     systick_init();
 }
 
+static volatile uint16_t scans;
+
+uint16_t tick_scans(void)
+{
+    uint16_t n;
+    __critical
+    {
+        n = scans;
+    }
+    return n;
+}
+
 static void run_matrix_scan(void)
 {
     systick_arm(SYSTICK_SLOT_MATRIX_SCAN);
     matrix_scan_full();
+    scans++;
 }
 
 static void run_led_subframe(void)

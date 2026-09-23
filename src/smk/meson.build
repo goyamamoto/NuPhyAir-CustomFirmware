@@ -12,4 +12,6 @@ src_smk += files(
     'led_effect.c',
     'sleep.c',
     'tick.c',
+    'usjis.c',
+    'tap_hold.c',
 )

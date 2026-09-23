@@ -1,9 +1,15 @@
 #include "matrix.h"
+#ifdef TAP_HOLD
+#    include "tap_hold.h"
+#endif
 #include "report.h"
 #include "debug.h"
 #include "layout.h"
 #include "user_layout.h"
 #include "kb.h"
+#ifdef USJIS
+#    include "usjis.h"
+#endif
 #include "user_matrix.h"
 #include "kbdef.h"
 #include "host.h"
@@ -89,17 +95,42 @@ static void process_key_state(uint8_t row, uint8_t col, bool pressed)
     const uint16_t base = keymaps[default_layer][row][col];
 
     if (IS_QK_MOMENTARY(base)) {
+#ifdef TAP_HOLD
+        if (pressed) {
+            tap_hold_process(row, col, base, true); // Fn is another key too: pending mod-taps become holds
+        }
+#endif
         if (pressed) {
             action_layer = QK_MOMENTARY_GET_LAYER(base);
+#ifdef APPLE_FN
+            report_apple_fn_hold(kb_layer_is_apple_fn(action_layer));
+#endif
         } else {
             clear_keys();
             action_layer = 0;
+#ifdef USJIS
+            usjis_clear(); // the keys it tracked are gone from the report
+#endif
+#ifdef APPLE_FN
+            report_apple_fn_hold(false);
+#endif
         }
         return;
     }
 
     const uint16_t qcode = resolve_keycode(base, row, col);
 
+#ifdef TAP_HOLD
+    if (tap_hold_process(row, col, qcode, pressed)) {
+        return;
+    }
+#endif
+
+    process_keycode(qcode, pressed);
+}
+
+void process_keycode(uint16_t qcode, bool pressed)
+{
     if (!kb_process_record(qcode, pressed)) {
         return;
     }
@@ -144,6 +175,10 @@ void matrix_scan_full(void)
 
 uint8_t matrix_task()
 {
+#ifdef TAP_HOLD
+    tap_hold_task();
+#endif
+
     if (!matrix_updated) {
         return false;
     }

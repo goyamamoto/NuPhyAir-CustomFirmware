@@ -28,6 +28,11 @@ void init(void)
     reset_init();
     ldo_init();
     clock_init();
+#ifdef BOOT_ESCAPE
+    // Before anything else can hang: a board-defined key held at power-up jumps
+    // to the ISP bootloader. It needs the clock already up.
+    user_boot_escape();
+#endif
     peripherals_init();
 #ifdef DEBUG_SINK_UART
     uart_init();

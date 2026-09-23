@@ -35,10 +35,44 @@ void send_keyboard_report()
 #endif
 }
 
+#ifdef APPLE_FN
+static bool apple_fn_held;
+
+static bool report_has_keys(__xdata report_keyboard_t *report)
+{
+    for (uint8_t i = 0; i < KEYBOARD_REPORT_KEYS; i++) {
+        if (report->keys[i]) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void report_apple_fn_hold(bool held)
+{
+    apple_fn_held = held;
+    if (!held && keyboard_report.apple_fn) {
+        keyboard_report.apple_fn = 0;
+        send_6kro_report();
+    }
+}
+#endif
+
 void send_6kro_report()
 {
     keyboard_report.mods = real_mods;
     keyboard_report.mods |= weak_mods;
+
+#ifdef APPLE_FN
+    // fn goes out only with the first key pressed under it: first alone with the
+    // keys the host already has, then with the new key. Sent on its own, a Fn
+    // press with no key (Fn + a lighting key) would trigger macOS's Globe action.
+    if (apple_fn_held && !keyboard_report.apple_fn && report_has_keys(&keyboard_report)) {
+        last_report.apple_fn = 1;
+        host_keyboard_send(&last_report);
+        keyboard_report.apple_fn = 1;
+    }
+#endif
 
     if (memcmp(&keyboard_report, &last_report, sizeof(report_keyboard_t)) != 0) {
         for (uint8_t i = 0; i < KEYBOARD_REPORT_SIZE; i++) {

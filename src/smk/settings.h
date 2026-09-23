@@ -13,6 +13,9 @@ typedef struct {
     uint8_t ul_speed;
     uint8_t battery_indicator_on;
     uint8_t rf_link;
+#ifdef USJIS
+    uint8_t usjis_enabled;
+#endif
 } user_settings_t;
 
 extern user_settings_t user_settings;

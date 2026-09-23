@@ -1439,6 +1439,29 @@ enum keycode_aliases {
 
 #define MOD_BIT(code) (1 << ((code)&0x07))
 
+// 5-bit modifier encoding used inside QK_MOD_TAP keycodes (bit 4 = right hand).
+#define MOD_LCTL 0x01
+#define MOD_LSFT 0x02
+#define MOD_LALT 0x04
+#define MOD_LGUI 0x08
+#define MOD_RCTL 0x11
+#define MOD_RSFT 0x12
+#define MOD_RALT 0x14
+#define MOD_RGUI 0x18
+
+// Mod-tap: tap sends kc, hold acts as the modifier (see tap_hold.c; one modifier per key).
+#define MT(mod, kc) (QK_MOD_TAP | (((mod)&0x1F) << 8) | ((kc)&0xFF))
+#define QK_MOD_TAP_GET_MODS(kc) (((kc) >> 8) & 0x1F)
+#define QK_MOD_TAP_GET_TAP_KEYCODE(kc) ((kc)&0xFF)
+#define LCTL_T(kc) MT(MOD_LCTL, kc)
+#define LSFT_T(kc) MT(MOD_LSFT, kc)
+#define LALT_T(kc) MT(MOD_LALT, kc)
+#define LGUI_T(kc) MT(MOD_LGUI, kc)
+#define RCTL_T(kc) MT(MOD_RCTL, kc)
+#define RSFT_T(kc) MT(MOD_RSFT, kc)
+#define RALT_T(kc) MT(MOD_RALT, kc)
+#define RGUI_T(kc) MT(MOD_RGUI, kc)
+
 // Used for SHIFT_ESC
 #define MODS_SHIFT_MASK (MOD_BIT(KC_LSFT)|MOD_BIT(KC_RSFT))
 

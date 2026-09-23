@@ -156,6 +156,10 @@ foreach keyboard, board : keyboards
             '-DLAYOUT_NAME="@0@"'.format(layout),
         ]
 
+        foreach define : options.get('defines', [])
+            cc_args += '-D' + define
+        endforeach
+
         foreach key, define : usb_string_defines
             value = get_option('usb_' + key)
             if value == ''

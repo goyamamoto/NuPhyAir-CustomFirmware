@@ -72,15 +72,24 @@ const uint8_t hid_report_desc_keyboard[] = {
         HID_RI_REPORT_COUNT(8, 0x01),
         HID_RI_INPUT(8, HID_IOF_CONSTANT),
 
-        // Keycodes (6 bytes)
+        // Keycodes (6 bytes, or 5 with APPLE_FN)
         HID_RI_USAGE_PAGE(8, 0x07),    // Keyboard/Keypad
         HID_RI_USAGE_MINIMUM(8, 0x00),
         HID_RI_USAGE_MAXIMUM(8, 0xFF),
         HID_RI_LOGICAL_MINIMUM(8, 0x00),
         HID_RI_LOGICAL_MAXIMUM(16, 0x00FF),
         HID_RI_REPORT_SIZE(8, 0x08),
-        HID_RI_REPORT_COUNT(8, 0x06),
+        HID_RI_REPORT_COUNT(8, KEYBOARD_REPORT_KEYS),
         HID_RI_INPUT(8, HID_IOF_DATA | HID_IOF_ARRAY | HID_IOF_ABSOLUTE),
+
+#ifdef APPLE_FN
+        // Apple fn (1 byte), as on Apple keyboards
+        HID_RI_USAGE_PAGE(8, 0xFF),
+        HID_RI_USAGE(8, 0x03),
+        HID_RI_REPORT_SIZE(8, 0x08),
+        HID_RI_REPORT_COUNT(8, 0x01),
+        HID_RI_INPUT(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE),
+#endif
 
         // Status LEDs (5 bits)
         HID_RI_USAGE_PAGE(8, 0x08),    // LED
@@ -341,6 +350,16 @@ static void usb_get_configuration_handler();
 static void usb_get_interface_handler();
 static void usb_hid_get_report_handler();
 static void usb_hid_set_report_handler(struct usb_req_setup *req);
+
+#if DEBUG == 1
+// SET_REPORT requests seen by the ISR, logged later from the main loop by usb_task().
+static volatile uint8_t  dbg_set_report_count;
+static volatile uint16_t dbg_set_report_value;
+static volatile uint16_t dbg_set_report_index;
+static volatile uint16_t dbg_set_report_length;
+static volatile uint8_t  dbg_led_count;
+static volatile uint8_t  dbg_led_value;
+#endif
 static void usb_hid_set_idle_handler(struct usb_req_setup *req);
 static void usb_hid_get_idle_handler();
 static void usb_hid_set_protocol_handler(struct usb_req_setup *req);
@@ -459,6 +478,18 @@ void usb_task(void)
 #ifdef ISP_ENABLE
     if (usb_isp_requested) {
         isp_jump();
+    }
+#endif
+#if DEBUG == 1
+    static uint8_t set_report_logged;
+    static uint8_t led_logged;
+    if (set_report_logged != dbg_set_report_count) {
+        set_report_logged = dbg_set_report_count;
+        dprintf("SET_REPORT wValue=%04x wIndex=%04x wLength=%04x\r\n", dbg_set_report_value, dbg_set_report_index, dbg_set_report_length);
+    }
+    if (led_logged != dbg_led_count) {
+        led_logged = dbg_led_count;
+        dprintf("LED %02x\r\n", (unsigned int)dbg_led_value);
     }
 #endif
 }
@@ -1070,6 +1101,12 @@ static void usb_hid_get_report_handler()
 
 static void usb_hid_set_report_handler(struct usb_req_setup *req)
 {
+#if DEBUG == 1
+    dbg_set_report_value  = req->wValue;
+    dbg_set_report_index  = req->wIndex;
+    dbg_set_report_length = req->wLength;
+    dbg_set_report_count++;
+#endif
     switch (req->wValue >> 8) {
         case REPORT_TYPE_OUTPUT:
             if ((req->wIndex == 0) && (req->wLength == 0x0001)) {
@@ -1151,6 +1188,10 @@ void usb_ep0_out_irq()
         usb_ep0_state = 0;
 
         keyboard_set_led_state(EP0_OUT_BUF[0]);
+#if DEBUG == 1
+        dbg_led_value = EP0_OUT_BUF[0];
+        dbg_led_count++;
+#endif
 
         CLEAR_EP0_CNT;
         SET_EP0_IN_RDY;
