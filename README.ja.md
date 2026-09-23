@@ -33,12 +33,12 @@
 | --- | --- | --- |
 | NuPhy Air75 初代（V1）、ANSI | 05ac:024f、製品名 "Air75" | 動作。macOS のホストで、USB、Bluetooth、2.4 GHz のドングルのそれぞれを実機で確認済み（US-JIS は Win レイヤーで確認） |
 
-Air75 V2 と V3 には使えません（STM32 を使い、NuPhy の QMK ベースのファームウェアで動いています）。NuPhy Air60 V2 については、QMK への移植 [goyamamoto/qmk-firmware](https://github.com/goyamamoto/qmk-firmware/tree/air60v2) を見てください。
+使えるのは V1 だけです。Air75 V2 は STM32 を使い NuPhy の QMK ベースのファームウェアで動いており、V3 も独自のファームウェアなので、どちらにも使えません。NuPhy Air60 V2 については、QMK への移植 [goyamamoto/qmk-firmware](https://github.com/goyamamoto/qmk-firmware/tree/air60v2) を見てください。
 
 ## 手順
 
 1. **キーボードを確かめる。** USB でつなぎ、USB ID が `05ac:024f`、製品名が "Air75" であることを確かめる（macOS ではシステム情報 > USB）。
-2. **ツールを入れる。** [sinowisp](https://github.com/carlossless/sinowisp) を `cargo install sinowisp` で入れる（純正のブートローダを通じて USB でフラッシュを読み書きするツール）。macOS では、入力監視を許可したターミナルアプリから実行する（システム設定 > プライバシーとセキュリティ > 入力監視）。許可がないとキーボードを開けない。
+2. **ツールを入れる。** [sinowisp](https://github.com/carlossless/sinowisp) を `cargo install sinowisp` で入れる（[Rust](https://rustup.rs/) が要る。sinowisp は純正のブートローダを通じて USB でフラッシュを読み書きするツール）。macOS では、入力監視を許可したターミナルアプリから実行する（システム設定 > プライバシーとセキュリティ > 入力監視）。許可がないとキーボードを開けない。
 3. **純正ファームウェアをバックアップする。** 2 つのファイルは、純正に戻す唯一の手段なので大切に保管する。
    ```sh
    sinowisp read -d nuphy-air75 air75-stock.hex                 # ファームウェア。純正に戻すとき（手順 8）に使う

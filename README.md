@@ -33,12 +33,12 @@ Every image has the Apple fn key, the boot escape, the Bluetooth names and sleep
 | --- | --- | --- |
 | NuPhy Air75, first model (V1), ANSI | 05ac:024f, product "Air75" | Works; checked on the board with macOS hosts over USB, Bluetooth and the 2.4 GHz dongle (US-JIS in the Win layer) |
 
-Not for the Air75 V2 or V3: those use an STM32 and run NuPhy's QMK-based firmware. For the NuPhy Air60 V2, see the QMK port in [goyamamoto/qmk-firmware](https://github.com/goyamamoto/qmk-firmware/tree/air60v2).
+Only for the V1. The Air75 V2 uses an STM32 and runs NuPhy's QMK-based firmware, and the V3 has firmware of its own; neither is supported. For the NuPhy Air60 V2, see the QMK port in [goyamamoto/qmk-firmware](https://github.com/goyamamoto/qmk-firmware/tree/air60v2).
 
 ## Steps
 
 1. **Check the keyboard.** Plug it in by USB. It must show up as USB ID `05ac:024f`, product "Air75" (macOS: System Information > USB).
-2. **Install the tools.** Install [sinowisp](https://github.com/carlossless/sinowisp) with `cargo install sinowisp` (it reads and writes the flash through the stock bootloader over USB). On macOS, run it from a terminal app that has Input Monitoring permission (System Settings > Privacy & Security > Input Monitoring); without it the keyboard cannot be opened.
+2. **Install the tools.** Install [sinowisp](https://github.com/carlossless/sinowisp) with `cargo install sinowisp` (this needs [Rust](https://rustup.rs/); sinowisp reads and writes the flash through the stock bootloader over USB). On macOS, run it from a terminal app that has Input Monitoring permission (System Settings > Privacy & Security > Input Monitoring); without it the keyboard cannot be opened.
 3. **Back up the stock firmware.** Keep both files somewhere safe; they are your only way back.
    ```sh
    sinowisp read -d nuphy-air75 air75-stock.hex                 # the firmware, for restoring (step 8)

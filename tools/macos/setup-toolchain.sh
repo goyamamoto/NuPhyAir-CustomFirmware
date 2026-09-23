@@ -23,6 +23,8 @@ sys.exit(0 if digest == "1QMEN/tDa7HZOo29v7RrqqYGEzGPT7P1hx1ygV0e7YA=" else "sdc
 PY
 curl -sL -o sdcc-4.4.0-aslink.patch \
     "https://src.fedoraproject.org/rpms/sdcc/raw/4a7c2a7e32369461eb451fc6f4d678a010135afc/f/sdcc-4.4.0-aslink.patch"
+echo "7c0a31c10a9d1d15b015ef2b01f1dd8d117f4d672c2c6ca15da54d6b6889b450  sdcc-4.4.0-aslink.patch" | shasum -a 256 -c - >/dev/null ||
+    { echo "aslink patch hash mismatch" >&2; exit 1; }
 
 # SDCC itself, mcs51 only.
 rm -rf sdcc-4.5.0 && tar xjf "$tarball"
