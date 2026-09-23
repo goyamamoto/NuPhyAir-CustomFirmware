@@ -82,20 +82,57 @@ Air75 V2 と V3 には使えません（STM32 を使い、NuPhy の QMK ベー�
 
 ## ビルド
 
-[SDCC](https://sdcc.sourceforge.net/) 4.5.0 と meson でビルドします。[Nix](https://nixos.org/) があれば、`nix develop` でツールチェーン、sinowisp、改造したシミュレータがそろいます。Nix を使わない macOS では、[tools/macos/setup-toolchain.sh](tools/macos/setup-toolchain.sh) が SDCC 4.5.0 とシミュレータを `~/.local/smk` に作ります。
+`firmware/` のイメージは、下の手順で作った release ビルドです。同じコミットを SDCC 4.5.0 でビルドすれば 1 バイトも違わないものができるので、ダウンロードしたイメージを自分のビルドと照らし合わせられます。
 
-```sh
-meson setup build-release --buildtype=release
-meson compile -C build-release nuphy-air75_usjis_smk.hex nuphy-air75_ansi_smk.hex
-```
+### release ビルドの手順
 
-これで `firmware/` と同じイメージができます。デバッグコンソールもログもない release ビルドです。`meson setup build` だけだと debug ビルドになり、smk の HID デバッグコンソール（`tools/smk-console` で読める）が加わります。コンソールはチップの ID、モードの切り替え、設定をホストに伝えるので、開発のときだけ使ってください。
+1. **ソースを取ってくる。**
+   ```sh
+   git clone https://github.com/goyamamoto/NuPhyAir-CustomFirmware.git
+   cd NuPhyAir-CustomFirmware
+   ```
+2. **ツールチェーンを入れる。** SDCC はちょうど **4.5.0** が要る（ほかの版では smk の `--Werror` で止まるか、違うイメージになる）。ほかに meson、ninja、Python 3 も要る。
+   - [Nix](https://nixos.org/) があれば（Linux / macOS）: リポジトリで `nix develop` を実行する。sinowisp とシミュレータも含めて全部そろう。
+   - Nix を使わない macOS: [Homebrew](https://brew.sh/) を入れた状態で、[tools/macos/setup-toolchain.sh](tools/macos/setup-toolchain.sh) を一度実行する。Homebrew で meson と ninja を入れ、SDCC 4.5.0 とシミュレータを `~/.local/smk` にビルドする（しばらくかかる）。そのあと、ターミナルを開くたびに次を実行する。
+     ```sh
+     . ~/.local/smk/env.sh
+     sdcc --version    # 4.5.0 と出ること
+     ```
+   - そのほか: meson、ninja、Python 3、SDCC 4.5.0 を入れる（パッケージの SDCC が別の版ならソースからビルドする）。
+3. **release ビルドを設定する**（最初の一度だけ）。`build-release` は出力先のフォルダ名。デバッグコンソールとログを外すのは `--buildtype=release` の指定。
+   ```sh
+   meson setup build-release --buildtype=release
+   ```
+4. **ビルドする。** 欲しいレイアウトを指定する（両方でもよい）。
+   ```sh
+   meson compile -C build-release nuphy-air75_usjis_smk.hex nuphy-air75_ansi_smk.hex
+   ```
+   イメージは `build-release/` にできる。ソースを変えたときはこの手順だけをやり直す（手順 3 は要らない）。
+5. **確かめる**（任意）。ソースを変えていなければ `firmware/` と同じファイルになる。ビルドしたイメージがそれぞれ `OK` になること。
+   ```sh
+   (cd build-release && shasum -a 256 --ignore-missing -c ../firmware/nuphy-air75-v1/SHA256SUMS)
+   ```
+6. **書き込む。** [手順](#手順) の 5 と 6 のとおりに、イメージのパスを指定して書き込む。例: `sinowisp write -d nuphy-air75 --force build-release/nuphy-air75_usjis_smk.hex`
 
-シミュレータのテストは既定で `build/` のイメージを使います。ほかのイメージは `SMK_AIR75_FIRMWARE`（`usjis`）と `SMK_AIR75_ANSI_FIRMWARE`（`ansi`）で指定します。
+### release ビルドと debug ビルド
+
+| | release | debug |
+| --- | --- | --- |
+| 設定のしかた | `meson setup build-release --buildtype=release` | `meson setup build`（meson の既定） |
+| 用途 | 普段使い。`firmware/` のイメージ | 開発 |
+| HID デバッグコンソール（`tools/smk-console`） | なし | あり。チップの ID、モードの切り替え、設定をホストに伝える |
+| ログ | なし | あり |
+| ソース行単位のシミュレータテスト | 飛ばされる（`.cdb` がない） | あり |
+
+キーボードは打ったものをすべて見ているので、普段使うキーボードに debug ビルドを入れたままにしないでください。
+
+### シミュレータのテスト
+
+テストには改造したシミュレータ（`nix develop` か macOS のスクリプトで入る）と、両方のレイアウトのイメージが要ります。既定では `build/` のイメージを使うので、release のイメージは `SMK_AIR75_FIRMWARE`（`usjis`）と `SMK_AIR75_ANSI_FIRMWARE`（`ansi`）で指定します。
 
 ```sh
 export SMK_AIR75_FIRMWARE=build-release/nuphy-air75_usjis_smk.hex SMK_AIR75_ANSI_FIRMWARE=build-release/nuphy-air75_ansi_smk.hex
-python3 -m unittest discover -s tests -p test_air75.py        # シミュレータでのボードのテスト（両レイアウト）
+python3 -m unittest discover -s tests -p test_air75.py        # ボードのテスト（両レイアウト）
 python3 -m unittest discover -s tests -p test_air75_usjis.py  # US-JIS のテスト（数分かかる）
 ```
 

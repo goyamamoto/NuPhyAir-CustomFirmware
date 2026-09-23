@@ -82,20 +82,57 @@ The upper-left side light shows the connection: orange = USB, blue = Bluetooth, 
 
 ## Building
 
-The firmware is built with [SDCC](https://sdcc.sourceforge.net/) 4.5.0 and meson. With [Nix](https://nixos.org/), `nix develop` gives the toolchain, sinowisp and the patched simulator. On macOS without Nix, [tools/macos/setup-toolchain.sh](tools/macos/setup-toolchain.sh) builds SDCC 4.5.0 and the simulator into `~/.local/smk`.
+The images in `firmware/` are release builds made with the steps below. Built from the same commit with SDCC 4.5.0, they come out byte for byte the same, so you can check a download against your own build.
 
-```sh
-meson setup build-release --buildtype=release
-meson compile -C build-release nuphy-air75_usjis_smk.hex nuphy-air75_ansi_smk.hex
-```
+### Release build, step by step
 
-This gives the same images as in `firmware/`: release builds with no debug console and no logging. A plain `meson setup build` gives a debug build instead, which adds smk's HID debug console (read with `tools/smk-console`); use it only for development, since the console reports chip IDs, mode changes and settings to the host.
+1. **Get the source.**
+   ```sh
+   git clone https://github.com/goyamamoto/NuPhyAir-CustomFirmware.git
+   cd NuPhyAir-CustomFirmware
+   ```
+2. **Install the toolchain.** You need SDCC **4.5.0** exactly (other versions stop at smk's `--Werror` or give a different image), meson, ninja and Python 3.
+   - With [Nix](https://nixos.org/) (Linux or macOS): run `nix develop` in the repository. It provides everything, including sinowisp and the simulator.
+   - On macOS without Nix: with [Homebrew](https://brew.sh/) installed, run [tools/macos/setup-toolchain.sh](tools/macos/setup-toolchain.sh) once. It installs meson and ninja with Homebrew and builds SDCC 4.5.0 and the simulator into `~/.local/smk`, which takes a while. Then, in every new terminal:
+     ```sh
+     . ~/.local/smk/env.sh
+     sdcc --version    # must show 4.5.0
+     ```
+   - Elsewhere: install meson, ninja, Python 3 and SDCC 4.5.0 (from source if your package manager has another version).
+3. **Set up a release build**, once. `build-release` is the output folder; `--buildtype=release` is what leaves out the debug console and logging.
+   ```sh
+   meson setup build-release --buildtype=release
+   ```
+4. **Build** the layout you want (or both):
+   ```sh
+   meson compile -C build-release nuphy-air75_usjis_smk.hex nuphy-air75_ansi_smk.hex
+   ```
+   The images are written to `build-release/`. After changing the source, run this step again; step 3 is not needed again.
+5. **Check it** (optional). Unchanged source gives the same files as `firmware/`; each image you built must say `OK`:
+   ```sh
+   (cd build-release && shasum -a 256 --ignore-missing -c ../firmware/nuphy-air75-v1/SHA256SUMS)
+   ```
+6. **Write it** as in [Steps](#steps) 5 and 6, with the path to your image, for example `sinowisp write -d nuphy-air75 --force build-release/nuphy-air75_usjis_smk.hex`.
 
-The simulator tests use `build/` by default; point them at other images with `SMK_AIR75_FIRMWARE` (`usjis`) and `SMK_AIR75_ANSI_FIRMWARE` (`ansi`):
+### Release and debug builds
+
+| | Release | Debug |
+| --- | --- | --- |
+| Set up with | `meson setup build-release --buildtype=release` | `meson setup build` (meson's default) |
+| Meant for | Daily use; the images in `firmware/` | Development |
+| HID debug console (`tools/smk-console`) | No | Yes: reports chip IDs, mode changes and settings to the host |
+| Logging | No | Yes |
+| Source-level simulator tests | Skipped (no `.cdb`) | Yes |
+
+A keyboard sees everything you type, so do not keep a debug build on a keyboard you use every day.
+
+### Simulator tests
+
+The tests need the patched simulator (from `nix develop` or the macOS script) and both layouts built. They use `build/` by default; point them at the release images with `SMK_AIR75_FIRMWARE` (`usjis`) and `SMK_AIR75_ANSI_FIRMWARE` (`ansi`):
 
 ```sh
 export SMK_AIR75_FIRMWARE=build-release/nuphy-air75_usjis_smk.hex SMK_AIR75_ANSI_FIRMWARE=build-release/nuphy-air75_ansi_smk.hex
-python3 -m unittest discover -s tests -p test_air75.py        # board tests in the simulator (both layouts)
+python3 -m unittest discover -s tests -p test_air75.py        # board tests (both layouts)
 python3 -m unittest discover -s tests -p test_air75_usjis.py  # US-JIS tests (a few minutes)
 ```
 

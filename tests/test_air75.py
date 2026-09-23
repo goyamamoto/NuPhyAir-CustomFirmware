@@ -48,7 +48,7 @@ MOD_RCTL, MOD_RSFT, MOD_RALT, MOD_RGUI = 0x10, 0x20, 0x40, 0x80
 def _need_firmware():
     if not Path(AIR75_FW).exists():
         raise unittest.SkipTest(f"no nuphy-air75 firmware at {AIR75_FW}")
-    reason = Sim().available()
+    reason = Sim(AIR75_FW).available()   # not Sim(): that looks for build/'s Air60 image
     if reason:
         raise unittest.SkipTest(reason)
 

@@ -5,7 +5,7 @@
 | `nuphy-air75_ansi_smk.hex` | `ansi`: plain US ANSI |
 | `nuphy-air75_usjis_smk.hex` | `usjis`: adds US-JIS, the IME keys beside Space and the Caps Lock / Left Ctrl swap |
 
-Both are release builds of this repository's source: no debug console and no logging, sleep and ISP enabled. They are built with SDCC 4.5.0 (built from source on macOS by `tools/macos/setup-toolchain.sh`):
+Both are release builds of this repository's source: no debug console and no logging, sleep and ISP enabled. They are built with SDCC 4.5.0 as below; the top-level README's [Building](../../README.md#building) section has the full steps, including the toolchain and how to check your build against `SHA256SUMS`:
 
 ```sh
 meson setup build-release --buildtype=release
