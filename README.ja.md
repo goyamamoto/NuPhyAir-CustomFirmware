@@ -99,7 +99,6 @@ python3 -m unittest discover -s tests -p test_air75_usjis.py  # US-JIS のテス
 - 同梱のイメージは debug ビルドで、smk の HID デバッグコンソールも入っている（`tools/smk-console` で読める）。
 - ペアリングには約 6 秒の長押しが要る（純正は 3〜4 秒）。
 - US-JIS は Win レイヤーだけ。一部の変換に要る JIS 専用のキーを macOS が捨てるため。
-- `ansi` のイメージはシミュレータでだけ確かめた。実機で確かめたのは `usjis` のコード。
 
 ## upstream の smk からの変更
 

@@ -12,4 +12,4 @@ meson setup build
 meson compile -C build nuphy-air75_ansi_smk.hex nuphy-air75_usjis_smk.hex
 ```
 
-Check a download with `shasum -a 256 -c SHA256SUMS`, back up the stock firmware, and write one image as the top-level README describes (`sinowisp write -d nuphy-air75 --force <image>`). See the top-level README for which image was checked on the board.
+Check a download with `shasum -a 256 -c SHA256SUMS`, back up the stock firmware, and write one image as the top-level README describes (`sinowisp write -d nuphy-air75 --force <image>`). Both images are checked on the board.

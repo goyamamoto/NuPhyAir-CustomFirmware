@@ -99,7 +99,6 @@ Technical notes for the board (pins, Apple fn, US-JIS, mod-taps, boot escape) ar
 - The prebuilt image is a debug build: it also carries smk's HID debug console (read with `tools/smk-console`).
 - Pairing needs a hold of about 6 s (the stock firmware takes 3-4 s).
 - US-JIS works only in the Win layer: macOS drops the JIS-only keys some of the substitutions need.
-- The `ansi` image has been checked in the simulator only; the `usjis` code is what was checked on the board.
 
 ## Changes from upstream smk
 
