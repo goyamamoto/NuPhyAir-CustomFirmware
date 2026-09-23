@@ -85,8 +85,16 @@ Air75 V2 と V3 には使えません（STM32 を使い、NuPhy の QMK ベー�
 [SDCC](https://sdcc.sourceforge.net/) 4.5.0 と meson でビルドします。[Nix](https://nixos.org/) があれば、`nix develop` でツールチェーン、sinowisp、改造したシミュレータがそろいます。Nix を使わない macOS では、[tools/macos/setup-toolchain.sh](tools/macos/setup-toolchain.sh) が SDCC 4.5.0 とシミュレータを `~/.local/smk` に作ります。
 
 ```sh
-meson setup build
-meson compile -C build nuphy-air75_usjis_smk.hex nuphy-air75_ansi_smk.hex
+meson setup build-release --buildtype=release
+meson compile -C build-release nuphy-air75_usjis_smk.hex nuphy-air75_ansi_smk.hex
+```
+
+これで `firmware/` と同じイメージができます。デバッグコンソールもログもない release ビルドです。`meson setup build` だけだと debug ビルドになり、smk の HID デバッグコンソール（`tools/smk-console` で読める）が加わります。コンソールはチップの ID、モードの切り替え、設定をホストに伝えるので、開発のときだけ使ってください。
+
+シミュレータのテストは既定で `build/` のイメージを使います。ほかのイメージは `SMK_AIR75_FIRMWARE`（`usjis`）と `SMK_AIR75_ANSI_FIRMWARE`（`ansi`）で指定します。
+
+```sh
+export SMK_AIR75_FIRMWARE=build-release/nuphy-air75_usjis_smk.hex SMK_AIR75_ANSI_FIRMWARE=build-release/nuphy-air75_ansi_smk.hex
 python3 -m unittest discover -s tests -p test_air75.py        # シミュレータでのボードのテスト（両レイアウト）
 python3 -m unittest discover -s tests -p test_air75_usjis.py  # US-JIS のテスト（数分かかる）
 ```
@@ -96,7 +104,6 @@ python3 -m unittest discover -s tests -p test_air75_usjis.py  # US-JIS のテス
 ## 既知の制限
 
 - イメージを書き込むと設定が初期化される（sinowisp が設定の領域を 0 で埋めるため）。接続先は Bluetooth スロット 1 から始まる。
-- 同梱のイメージは debug ビルドで、smk の HID デバッグコンソールも入っている（`tools/smk-console` で読める）。
 - ペアリングには約 6 秒の長押しが要る（純正は 3〜4 秒）。
 - US-JIS は Win レイヤーだけ。一部の変換に要る JIS 専用のキーを macOS が捨てるため。
 

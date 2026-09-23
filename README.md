@@ -85,8 +85,16 @@ The upper-left side light shows the connection: orange = USB, blue = Bluetooth, 
 The firmware is built with [SDCC](https://sdcc.sourceforge.net/) 4.5.0 and meson. With [Nix](https://nixos.org/), `nix develop` gives the toolchain, sinowisp and the patched simulator. On macOS without Nix, [tools/macos/setup-toolchain.sh](tools/macos/setup-toolchain.sh) builds SDCC 4.5.0 and the simulator into `~/.local/smk`.
 
 ```sh
-meson setup build
-meson compile -C build nuphy-air75_usjis_smk.hex nuphy-air75_ansi_smk.hex
+meson setup build-release --buildtype=release
+meson compile -C build-release nuphy-air75_usjis_smk.hex nuphy-air75_ansi_smk.hex
+```
+
+This gives the same images as in `firmware/`: release builds with no debug console and no logging. A plain `meson setup build` gives a debug build instead, which adds smk's HID debug console (read with `tools/smk-console`); use it only for development, since the console reports chip IDs, mode changes and settings to the host.
+
+The simulator tests use `build/` by default; point them at other images with `SMK_AIR75_FIRMWARE` (`usjis`) and `SMK_AIR75_ANSI_FIRMWARE` (`ansi`):
+
+```sh
+export SMK_AIR75_FIRMWARE=build-release/nuphy-air75_usjis_smk.hex SMK_AIR75_ANSI_FIRMWARE=build-release/nuphy-air75_ansi_smk.hex
 python3 -m unittest discover -s tests -p test_air75.py        # board tests in the simulator (both layouts)
 python3 -m unittest discover -s tests -p test_air75_usjis.py  # US-JIS tests (a few minutes)
 ```
@@ -96,7 +104,6 @@ Technical notes for the board (pins, Apple fn, US-JIS, mod-taps, boot escape) ar
 ## Known limitations
 
 - Writing any image resets the settings (sinowisp zero-fills the settings area); the link then starts on Bluetooth slot 1.
-- The prebuilt image is a debug build: it also carries smk's HID debug console (read with `tools/smk-console`).
 - Pairing needs a hold of about 6 s (the stock firmware takes 3-4 s).
 - US-JIS works only in the Win layer: macOS drops the JIS-only keys some of the substitutions need.
 

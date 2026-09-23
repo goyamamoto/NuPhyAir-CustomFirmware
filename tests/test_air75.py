@@ -83,6 +83,23 @@ class Air75Sim(Air60Sim):
         super().__init__(firmware or AIR75_FW)
         self.matrix = Air75KeyMatrix()
 
+    def _xdata_static(self, module, name):
+        """As Air60Sim's, but a release build's .map has no static symbols (SDCC
+        writes them only with --debug, which also changes the code), so fall back
+        to the linker's relocated listing <image>.ihx.p/<module>.rst."""
+        try:
+            return super()._xdata_static(module, name)
+        except KeyError:
+            rst = Path(self.firmware).with_suffix(".ihx.p") / (module + ".rst")
+            if rst.exists():
+                pat = re.compile(r"^\s+([0-9A-F]{6})\s+\d+ _%s:$" % re.escape(name))
+                with open(rst) as f:
+                    for line in f:
+                        m = pat.match(line)
+                        if m:
+                            return int(m.group(1), 16)
+            raise
+
     def reset_fast(self, p5=0xFF, p7=0xFF):
         """Reset with the calibrated busy-wait delays stubbed out, and present the
         given external pin levels on P5/P7 from the first instruction on."""
