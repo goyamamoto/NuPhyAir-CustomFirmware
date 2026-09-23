@@ -23,7 +23,7 @@ You can very easily end up with a bricked device if the written firmware can't j
 | Keyboard | MCU | Wireless | Extra | Details |
 | -------- | --- | -------- | ----- | ------- |
 | NuPhy Air60 v1 | SH68F90A / BYK916 | 2.4G, BT (BDR+BLE) | | [Details](keyboards/nuphy-air60.md) |
-| NuPhy Air75 v1 | SH68F90A / BYK916 | BT (2.4G untested) | Boot escape, US-JIS, IME mod-taps, Apple fn | [Details](keyboards/nuphy-air75.md) |
+| NuPhy Air75 v1 | SH68F90A / BYK916 | BT (2.4G expected, not checked) | Boot escape, US-JIS, IME mod-taps, Apple fn | [Details](keyboards/nuphy-air75.md) |
 | E-YOOSO Z11 | SH68F90A / BYK901 | N/A | | [Details](keyboards/eyooso-z11.md) |
 | Genesis Thor 300 | SH68F881 / BYK801 | N/A | | [Details](keyboards/genesis-thor-300.md) |
 | CIY X77 | SH68F89 / BYK816 | N/A | External 24Cxx EEPROM | [Details](keyboards/ciy-x77.md) |

@@ -9,21 +9,26 @@ keyboards += {
             'user_init.c',
             'user_sleep.c',
             'kb.c',
+            'indicators.c',
         ),
         'layouts' : {
-            'default' : {
-                'dir' : kb_dir / 'layouts/default',
-                'src' : files(
-                    'layouts/default/indicators.c',
-                    'layouts/default/layout.c',
-                ),
+            # Plain US ANSI.
+            'ansi' : {
+                'dir' : kb_dir / 'layouts/ansi',
+                'src' : files('layouts/ansi/layout.c'),
+            },
+            # ANSI plus US-JIS (Fn+Tab), IME mod-taps beside Space and Caps Lock / Left Ctrl swapped.
+            'usjis' : {
+                'dir' : kb_dir / 'layouts/usjis',
+                'src' : files('layouts/usjis/layout.c'),
+                'defines' : ['USJIS=1', 'TAP_HOLD=1'],
             },
         },
         'options' : {
             'vendor_id' : '0x05ac',
             'product_id' : '0x024f',
             'wireless' : 'bk3632',
-            'defines' : ['BOOT_ESCAPE=1', 'APPLE_FN=1', 'USJIS=1', 'TAP_HOLD=1', 'RF_BT_NAME="Air75"'],
+            'defines' : ['BOOT_ESCAPE=1', 'APPLE_FN=1', 'RF_BT_NAME="Air75"'],
             'manufacturer' : 'SMK',
             'product' : 'Air75 (SMK)',
             'led_rows' : '6',

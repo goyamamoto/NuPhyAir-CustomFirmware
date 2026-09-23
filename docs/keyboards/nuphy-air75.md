@@ -15,7 +15,7 @@ The pin map comes from static analysis of the stock firmware, not from the PCB.
 
 - [x] Key Scan (every key checked on an Air75 with a Mac host, and in the simulator)
 - [x] RGB Matrix (every key and the side lights, checked on an Air75; settings persist across power cycles)
-- [~] Wireless: Bluetooth (BLE) pairs and types on an Air75 with a Mac host, the battery level shows, and the Apple fn byte works over it; 2.4G not tried yet. Bluetooth 1 is the default link (after a flash or a factory reset)
+- [~] Wireless: Bluetooth (BLE) pairs and types on an Air75 with a Mac host, the battery level shows, and the Apple fn byte works over it; 2.4G should work (same link and driver as the Air60) but has not been checked on an Air75. Bluetooth 1 is the default link (after a flash or a factory reset)
 - [x] Sleep (the Air60 parking sequence plus the stock Air75 extras): on Bluetooth after about 5 minutes idle, waking on a key and reconnecting; over USB when the host sleeps, resuming with it. Checked on an Air75
 
 ## Boot escape
@@ -24,14 +24,18 @@ Hold Esc while the board powers up (plug in USB, or move the power switch) and t
 
 This exists because the SH68F90A bootloader has no power-on key check of its own: it runs the firmware whenever the LJMP marker at 0xEFFB is present, so a firmware that breaks USB would otherwise need the hardware programming interface.
 
-## Default layout
+## Layouts
+
+Two layouts share the board code: `ansi` is plain US ANSI; `usjis` adds US-JIS (`USJIS`), the IME mod-taps beside Space (`TAP_HOLD`) and swaps Caps Lock and Left Ctrl. The layout-level `defines` in `src/keyboards/nuphy-air75/meson.build` switch the features on; the Apple fn byte, the boot escape and the Bluetooth names are keyboard-level and in both.
+
+## Key map
 
 - Mac layer (OS switch in the Mac position): laid out like an Apple keyboard. The F-row sends F1-F4 and F7-F12, and Fn is the Apple fn key (`APPLE_FN`), so macOS decides what they do: media functions by default, F-keys with Fn, or the other way round with "Use F1, F2, etc. keys as standard function keys". F5/F6 dim and brighten the backlight, and Fn gives F5/F6, as in the stock firmware
 - Win layer: the F-row sends F1-F12; Fn gives the media functions. The fn byte is never set
 - The two keys between F12 and Del send PrtSc and Insert (macOS shows them as F13 and Help; the stock firmware has screenshot and assistant shortcuts there)
 - Caps Lock and Left Ctrl are swapped on both base layers (Left Ctrl sits next to A)
 - The keys beside Space are mod-taps for the Japanese IME (`TAP_HOLD`): held, they are Command (Mac) or Alt (Win); tapped, they send LANG2/LANG1 (Eisu/Kana) on the Mac layer and INT5/INT4 (Muhenkan/Henkan) on the Win layer, left/right
-- Fn layer: Tab = US-JIS on/off, link keys (Q/W/E = BT1-3, R = 2.4G; hold about 6 s to pair (4400 matrix scans; the stock firmware takes 3-4 s)), battery indicator on `[ ] \`, lighting on the bottom-right cluster and `, . /` — the nuphy-air60 layout one row lower. The factory-reset chord is Fn+Esc held, then Fn+V
+- Fn layer: Tab = US-JIS on/off (`usjis`; plain Tab in `ansi`), link keys (Q/W/E = BT1-3, R = 2.4G; hold about 6 s to pair (4400 matrix scans; the stock firmware takes 3-4 s)), battery indicator on `[ ] \`, lighting on the bottom-right cluster and `, . /` — the nuphy-air60 layout one row lower. The factory-reset chord is Fn+Esc held, then Fn+V
 - USB strings: manufacturer "SMK", product "Air75 (SMK)"
 - Bluetooth names: "Air75-1" .. "Air75-3" over BLE and "Air75-1 BT3.0" .. over classic Bluetooth, one per slot (`RF_BT_NAME`); a host shows which slot it paired with. The name is set just before switching to a slot, so a host that paired under an older name keeps showing it until it pairs again
 
@@ -62,10 +66,10 @@ The toolchain is SDCC 4.5.0 (the version smk's `flake.lock` pins) and meson; `ni
 
 ```sh
 meson setup build
-meson compile -C build nuphy-air75_default_smk.hex
+meson compile -C build nuphy-air75_usjis_smk.hex nuphy-air75_ansi_smk.hex
 python3 -m unittest discover -s tests -p test_air75.py        # board tests (simulator)
 python3 -m unittest discover -s tests -p test_air75_usjis.py  # US-JIS (simulator, a few minutes)
-meson compile -C build nuphy-air75_default_flash          # sinowisp write -d nuphy-air75 --force
+meson compile -C build nuphy-air75_usjis_flash            # sinowisp write -d nuphy-air75 --force
 ```
 
 `tests/test_air75.py` covers the boot escape, the matrix and keymap, and — when `SMK_AIR75_STOCK_JTAG` points at a stock dump — the whole chain through the stock bootloader: power-on into the firmware, Esc held into ISP mode, and a missing marker staying in the bootloader.

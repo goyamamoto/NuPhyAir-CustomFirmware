@@ -12,7 +12,7 @@ QMK ones with consecutive duplicates removed.
 
 Run from the repo root after building the firmware:
 
-    meson compile -C build nuphy-air75_default_smk.hex
+    meson compile -C build nuphy-air75_usjis_smk.hex
     python3 -m unittest discover -s tests -p test_air75_usjis.py
 """
 

@@ -156,7 +156,8 @@ foreach keyboard, board : keyboards
             '-DLAYOUT_NAME="@0@"'.format(layout),
         ]
 
-        foreach define : options.get('defines', [])
+        # Preprocessor defines from the keyboard's options, then from the layout.
+        foreach define : options.get('defines', []) + variant.get('defines', [])
             cc_args += '-D' + define
         endforeach
 

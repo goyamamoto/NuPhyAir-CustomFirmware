@@ -10,13 +10,22 @@
 ## できること
 
 - 全キー、Mac/Win 切り替えスイッチ、キーごとの RGB とサイドライト、電源を切っても残る設定
-- USB と Bluetooth。Bluetooth は 3 スロットで、名前は `Air75-1`〜`Air75-3`。2.4 GHz のドングルは未確認
+- USB と Bluetooth。Bluetooth は 3 スロットで、名前は `Air75-1`〜`Air75-3`。2.4 GHz のドングルも動くはず（smk の Air60 版と同じ無線と処理）だが、Air75 の実機では確認していない
 - スリープ: Bluetooth では約 5 分の無操作で眠り、キーで起きる。USB ではホストのスリープに合わせて眠る
 - **Apple の fn キー**: macOS では F 列が Apple のキーボードと同じように動く（メディアキー、Fn で F1〜F12）
-- **US-JIS**（Fn+Tab）: キーボード配列を日本語（JIS）にしたホストで、US 配列の刻印どおりに入力できる（Win レイヤー）
-- スペースの左右の **IME キー**: タップで英数/かな（Mac）または無変換/変換（Win）、長押しで Command/Alt
-- Caps Lock と左 Ctrl の入れ替え
+- **US-JIS**（Fn+Tab、`usjis` レイアウト）: キーボード配列を日本語（JIS）にしたホストで、US 配列の刻印どおりに入力できる（Win レイヤー）
+- スペースの左右の **IME キー**（`usjis` レイアウト）: タップで英数/かな（Mac）または無変換/変換（Win）、長押しで Command/Alt
+- Caps Lock と左 Ctrl の入れ替え（`usjis` レイアウト）
 - **起動時の逃げ道**: Esc を押しながら電源を入れると、このファームウェア自身の USB 処理より前にブートローダが立ち上がる
+
+## レイアウトの選び方
+
+どのイメージにも、Apple の fn キー、起動時の逃げ道、Bluetooth の名前、スリープが入っています。ほかに欲しいものでレイアウトを選んでください。
+
+| レイアウト | 追加されるもの | イメージ |
+| --- | --- | --- |
+| `ansi` | なし。素の US ANSI で、Caps Lock と Ctrl は刻印どおり | `nuphy-air75_ansi_smk.hex` |
+| `usjis` | US-JIS（Fn+Tab）、スペース左右の IME キー、Caps Lock と左 Ctrl の入れ替え | `nuphy-air75_usjis_smk.hex` |
 
 ## 対応キーボード
 
@@ -36,10 +45,10 @@ Air75 V2 と V3 には使えません（STM32 を使い、NuPhy の QMK ベー�
    sinowisp read -d nuphy-air75 -s full air75-stock-full.hex    # ファームウェアとブートローダ。保管用
    ```
    2 回読んでファイルを比べると、安定して読めているかを手軽に確かめられる。
-4. **ファームウェアを用意する。** 実機で確かめたイメージ [firmware/nuphy-air75-v1](firmware/nuphy-air75-v1) を使う（`shasum -a 256 -c SHA256SUMS` で確かめる）か、自分でビルドする（[ビルド](#ビルド)）。
+4. **ファームウェアを用意する。** レイアウト（上）を選び、[firmware/nuphy-air75-v1](firmware/nuphy-air75-v1) のイメージを使う（`shasum -a 256 -c SHA256SUMS` で確かめる）か、自分でビルドする（[ビルド](#ビルド)）。
 5. **書き込む。** USB でつなぎ、電源スイッチを USB 側にして、USB ID 05ac:024f のほかのキーボードは外しておく（Keychron の一部も同じ ID を使う）。
    ```sh
-   sinowisp write -d nuphy-air75 --force nuphy-air75_default_smk.hex
+   sinowisp write -d nuphy-air75 --force nuphy-air75_usjis_smk.hex    # または nuphy-air75_ansi_smk.hex
    ```
    イメージがフラッシュより小さいので `--force` が要る。残りは 0 で埋まり、設定も初期化される。
 6. **ほかのことをする前に、戻り道を確かめる。**
@@ -57,11 +66,11 @@ Air75 V2 と V3 には使えません（STM32 を使い、NuPhy の QMK ベー�
 
 | 場所 | 内容 |
 | --- | --- |
-| 基本レイヤー | US ANSI の 75 %。Caps Lock と左 Ctrl は入れ替え。F12 と Del の間の 2 キーは PrtSc と Insert（macOS では F13 と Help と表示される） |
-| スペースの左右 | Mac: タップ = 英数（左）/ かな（右）、長押し = Command。Win: タップ = 無変換 / 変換、長押し = Alt。約 0.4 秒押し続けるか、押している間にほかのキーを押すと修飾キーになる |
+| 基本レイヤー | US ANSI の 75 %。F12 と Del の間の 2 キーは PrtSc と Insert（macOS では F13 と Help と表示される）。`usjis`: Caps Lock と左 Ctrl は入れ替え |
+| スペースの左右 | `ansi`: Command（Mac）/ Alt（Win）。`usjis`: Mac: タップ = 英数（左）/ かな（右）、長押し = Command。Win: タップ = 無変換 / 変換、長押し = Alt。約 0.4 秒押し続けるか、押している間にほかのキーを押すと修飾キーになる |
 | F 列（Mac レイヤー） | F1〜F4 と F7〜F12（Fn を押していなければ macOS がメディアキーにする）。F5/F6 はバックライトを暗く/明るく、Fn+F5/F6 で F5/F6 |
 | F 列（Win レイヤー） | F1〜F12。Fn でメディアキー |
-| Fn + Tab | US-JIS のオン/オフ（サイドライトがマゼンタ = オン、薄い白 = オフに光る）。変換するのは Win レイヤーだけ。設定は電源を切っても残る |
+| Fn + Tab | `usjis`: US-JIS のオン/オフ（サイドライトがマゼンタ = オン、薄い白 = オフに光る）。変換するのは Win レイヤーだけ。設定は電源を切っても残る。`ansi`: Tab |
 | Fn + Q / W / E | Bluetooth のスロット 1 / 2 / 3。約 6 秒長押しでペアリング（状態ランプが点滅） |
 | Fn + R | 2.4 GHz |
 | Fn + [ / ] / \\ | 電池残量: 一時的に表示 / 常に表示 / 表示しない |
@@ -77,8 +86,8 @@ Air75 V2 と V3 には使えません（STM32 を使い、NuPhy の QMK ベー�
 
 ```sh
 meson setup build
-meson compile -C build nuphy-air75_default_smk.hex
-python3 -m unittest discover -s tests -p test_air75.py        # シミュレータでのボードのテスト
+meson compile -C build nuphy-air75_usjis_smk.hex nuphy-air75_ansi_smk.hex
+python3 -m unittest discover -s tests -p test_air75.py        # シミュレータでのボードのテスト（両レイアウト）
 python3 -m unittest discover -s tests -p test_air75_usjis.py  # US-JIS のテスト（数分かかる）
 ```
 
@@ -86,11 +95,12 @@ python3 -m unittest discover -s tests -p test_air75_usjis.py  # US-JIS のテス
 
 ## 既知の制限
 
-- 2.4 GHz のドングルは未確認。
+- 2.4 GHz のドングルは動くはず（Air75 の無線の接続と処理は、2.4 GHz が動いている Air60 と同じ）だが、Air75 の実機では確認していない。
 - イメージを書き込むと設定が初期化される（sinowisp が設定の領域を 0 で埋めるため）。接続先は Bluetooth スロット 1 から始まる。
 - 同梱のイメージは debug ビルドで、smk の HID デバッグコンソールも入っている（`tools/smk-console` で読める）。
 - ペアリングには約 6 秒の長押しが要る（純正は 3〜4 秒）。
 - US-JIS は Win レイヤーだけ。一部の変換に要る JIS 専用のキーを macOS が捨てるため。
+- `ansi` のイメージはシミュレータでだけ確かめた。実機で確かめたのは `usjis` のコード。
 
 ## upstream の smk からの変更
 

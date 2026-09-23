@@ -5,7 +5,7 @@ Covers what differs from the nuphy-air60: the boot-time ISP escape (Esc held at
 power-up), the 6-row matrix with its F-row on P7.0, and the keymap. Run from the
 repo root after building the firmware:
 
-    meson compile -C build nuphy-air75_default_smk.hex
+    meson compile -C build nuphy-air75_usjis_smk.hex nuphy-air75_ansi_smk.hex
     python3 -m unittest discover -s tests -p test_air75.py    # or: python3 tests/test_air75.py
 
 SMK_AIR75_FIRMWARE overrides the .hex. TestStockBootloaderChain also needs the
@@ -25,7 +25,10 @@ from pathlib import Path
 from sim import REPO_ROOT, Sim, load_symbols
 from devices import Air60Sim, KeyMatrix, P5, P7
 
-AIR75_FW = os.environ.get("SMK_AIR75_FIRMWARE") or str(REPO_ROOT / "build" / "nuphy-air75_default_smk.hex")
+# The usjis layout carries every feature; most tests run on it. The ansi
+# layout (no US-JIS, no mod-taps, stock Caps/Ctrl) has its own key map tests.
+AIR75_FW = os.environ.get("SMK_AIR75_FIRMWARE") or str(REPO_ROOT / "build" / "nuphy-air75_usjis_smk.hex")
+AIR75_ANSI_FW = os.environ.get("SMK_AIR75_ANSI_FIRMWARE") or str(REPO_ROOT / "build" / "nuphy-air75_ansi_smk.hex")
 
 ISP_ENTRY = 0xFF00
 ISP_KEYS_OK = 0xFF0A      # stock bootloader: A/B keys matched, ISP mode starts
@@ -548,6 +551,52 @@ class TestBluetoothPairing(unittest.TestCase):
         self._skip_hold_to(kb, 3500)               # ~5 s on the board: not long enough
         frames = self._frames(kb, 600, stop_on_pairing=False)
         self.assertNotIn([0xAA, 0x03, 0x01, 0x01, 0x01], [f[:5] for f in frames])
+
+
+class TestAnsiLayout(unittest.TestCase):
+    """The plain layout: Caps Lock where the stock firmware has it, plain
+    Command/Alt beside Space, no US-JIS (Fn+Tab is plain Tab)."""
+
+    @classmethod
+    def setUpClass(cls):
+        if not Path(AIR75_ANSI_FW).exists():
+            raise unittest.SkipTest(f"no nuphy-air75 ansi firmware at {AIR75_ANSI_FW}")
+        _need_firmware()
+
+    def _session(self, mac):
+        kb = Air75Sim(firmware=AIR75_ANSI_FW)
+        self.addCleanup(kb.close)
+        kb.boot(usb=True, mac=mac)
+        kb.mark_usb_configured()
+        return kb
+
+    assertKey = TestMatrixAndKeymap.assertKey
+
+    def test_built_without_usjis_and_mod_taps(self):
+        sym = load_symbols(Path(AIR75_ANSI_FW).with_suffix(".map"))
+        self.assertNotIn("usjis_process_record", sym)
+        self.assertNotIn("tap_hold_process", sym)
+        self.assertIn("user_boot_escape", sym)
+        data = read_ihex(AIR75_ANSI_FW)
+        self.assertLess(max(data), TestImage.FLASH_CFG_ADDR)
+
+    def test_win_layer(self):
+        kb = self._session(mac=False)
+        for key, mods, code in [((0, 3), 0x00, 0x39), ((0, 5), MOD_LCTL, 0x00), ((1, 5), MOD_LGUI, 0x00),
+                                ((2, 5), MOD_LALT, 0x00), ((8, 5), MOD_RALT, 0x00), ((1, 3), 0x00, 0x04)]:
+            with self.subTest(key=key):
+                self.assertKey(kb, key, mods, code)
+
+    def test_mac_layer(self):
+        kb = self._session(mac=True)
+        for key, mods in [((1, 5), MOD_LALT), ((2, 5), MOD_LGUI), ((8, 5), MOD_RGUI)]:
+            with self.subTest(key=key):
+                self.assertKey(kb, key, mods, 0x00)
+
+    def test_fn_tab_is_just_tab(self):
+        """Fn+Tab is transparent here (no US-JIS toggle), so it types Tab."""
+        kb = self._session(mac=False)
+        self.assertKey(kb, ((9, 5), (0, 2)), 0x00, 0x2B)
 
 
 class TestStockBootloaderChain(unittest.TestCase):
