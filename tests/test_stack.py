@@ -18,6 +18,7 @@ Override targets with env vars SMK_UCSIM (simulator) and SMK_FIRMWARE (.hex).
 
 import unittest
 
+from sim import skip_or_fail
 from sim import Sim
 from devices import Air60Sim
 
@@ -27,7 +28,7 @@ SIM = Sim()
 def setUpModule():
     reason = SIM.available()
     if reason:
-        raise unittest.SkipTest(reason)
+        skip_or_fail(reason)
 
 
 class TestWorstCaseStack(unittest.TestCase):

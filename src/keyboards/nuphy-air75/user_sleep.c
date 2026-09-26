@@ -6,10 +6,10 @@
 
 #ifdef SLEEP_ENABLE
 
-// HARDWARE NOTE: this is the nuphy-air60 parking sequence with the Air75 pins
-// renamed, plus the F-row RGB pins and the P7.6/P7.7 writes the Air75 stock
-// firmware adds. It has not been run on an Air75. If a pin here is wrong the
-// board will not wake and will need a power cycle (and possibly a reflash).
+// The nuphy-air60 parking sequence with the Air75 pins renamed, plus the F-row
+// RGB pins and the P7.6/P7.7 writes the Air75 stock firmware adds. Checked on
+// an Air75: it sleeps and wakes on a key over Bluetooth, and sleeps and resumes
+// with the host over USB.
 
 user_sleep_mode_t user_sleep_supported(void)
 {

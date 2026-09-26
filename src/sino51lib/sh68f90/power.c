@@ -70,10 +70,19 @@ static void usb_resume(powerdown_mode_t mode)
 {
     USBIF1 &= ~_SUSPIF;
     USBCON &= ~_GOSUSP;
+#ifdef USB_REMOTE_WAKEUP_STRICT
+    // A key woke the MCU: signal resume only if the host enabled remote wakeup
+    // and has not resumed the bus itself meanwhile (RESMIF ends the suspend).
+    if (int4_woke && usb_may_signal_resume()) {
+        USBCON |= _WKUP;
+    }
+    int4_woke = 0;
+#else
     if (int4_woke) {
         USBCON |= _WKUP;
         int4_woke = 0;
     }
+#endif
 
     if (mode == POWERDOWN_KEEP_USB_ALIVE) {
         USBIE1 = USBIE1_RESUME_ARM;

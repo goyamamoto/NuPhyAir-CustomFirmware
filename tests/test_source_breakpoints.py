@@ -15,6 +15,7 @@ Run from the repo root (inside `nix develop`, after building firmware):
 
 import unittest
 
+from sim import skip_or_fail
 from sim import Sim, REPO_ROOT
 
 SIM = Sim()
@@ -44,7 +45,7 @@ def codeless_main_c_line():
 def setUpModule():
     reason = SIM.available()
     if reason:
-        raise unittest.SkipTest(reason)
+        skip_or_fail(reason)
     if not SIM.has_lines():
         raise unittest.SkipTest(
             "no .cdb source-line map (build with debug info: "

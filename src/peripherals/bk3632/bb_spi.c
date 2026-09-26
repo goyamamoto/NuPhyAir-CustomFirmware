@@ -47,7 +47,13 @@ static void bb_spi_burst(uint8_t *data, int len, bool lock)
         }
     } else {
         for (int i = 0; i < len; i++) {
+#ifdef BK3632_TX_KEEPS_FRAME
+            // A transmit keeps its frame: a retry after a missed ACK sends it
+            // again, not the MISO bytes the burst clocked in.
+            bb_spi_xfer_byte(data[i]);
+#else
             data[i] = bb_spi_xfer_byte(data[i]);
+#endif
         }
     }
     CS_RELEASE_HIGH();

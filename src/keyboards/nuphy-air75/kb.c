@@ -9,6 +9,8 @@
 #include "report.h"
 #include "usb.h"
 #include "tick.h"
+#include "kb.h"
+#include "host.h"
 
 #ifdef RF_ENABLED
 #    include "rf_controller.h"
@@ -49,11 +51,60 @@ void kb_init()
 #endif
 }
 
+#ifdef RF_USB_MODE_AT_BOOT
+bool kb_conn_mode_is_usb(void)
+{
+    return user_keyboard_state.conn_mode == KEYBOARD_CONN_MODE_USB;
+}
+#endif
+
 #define SLIDER_DEBOUNCE_ITERS 256
+
+#ifdef RF_ENABLED
+static void link_hold_cancel(void);
+#endif
+
+// A key held while the slider moves would stay held on the host being left:
+// its release goes to the new transport. So everything goes up on the old one
+// first, sent straight to it; smk's own key state is left alone, so a key still
+// held reaches the new host with the next report.
+static void kb_release_all_on_current_transport(void)
+{
+    static __xdata report_keyboard_t released;
+    static __xdata report_extra_t    extra;
+
+    for (uint8_t i = 0; i < KEYBOARD_REPORT_SIZE; i++) {
+        released.raw[i] = 0;
+    }
+    kb_send_report(&released);
+
+#ifdef NKRO_ENABLE
+    if (host_nkro_active()) {
+        static __xdata report_nkro_t released_nkro;
+
+        for (uint8_t i = 0; i < NKRO_REPORT_SIZE; i++) {
+            released_nkro.raw[i] = 0;
+        }
+        released_nkro.report_id = REPORT_ID_NKRO;
+        kb_send_nkro(&released_nkro);
+    }
+#endif
+
+    extra.usage     = 0;
+    extra.report_id = REPORT_ID_CONSUMER;
+    kb_send_extra(&extra);
+    extra.report_id = REPORT_ID_SYSTEM;
+    kb_send_extra(&extra);
+}
 
 static void kb_apply_conn_mode(user_keyboard_conn_mode_t mode)
 {
+    kb_release_all_on_current_transport();
+
     user_keyboard_state.conn_mode = mode;
+#ifdef RF_ENABLED
+    link_hold_cancel(); // a link key held across the slider never pairs
+#endif
 
     switch (mode) {
         case KEYBOARD_CONN_MODE_USB:
@@ -160,6 +211,42 @@ static bool reset_mode_active;
 static uint16_t link_hold_since    = 0;
 static uint16_t link_hold_keycode  = 0;
 static bool     link_pairing_armed = false;
+// Where the held link key sits in the matrix. The hold is watched on the key
+// itself, so it ends when that key goes up whatever its release resolves to
+// (with Fn released first it would be Q/W/E/R, not the link keycode).
+static uint8_t link_hold_row;
+static uint8_t link_hold_col;
+
+extern uint8_t matrix[MATRIX_COLS]; // src/smk/matrix.c, written by the scan
+extern uint8_t action_layer;        // src/smk/matrix.c, the Fn layer while Fn is down
+
+static void link_hold_cancel(void)
+{
+    link_hold_keycode  = 0;
+    link_pairing_armed = false;
+}
+
+// Find the link key in the layer it was pressed in (each Fn layer has each
+// link keycode once) and pressed in the matrix now. False if not found, and
+// then no pairing hold is started.
+static bool link_hold_locate(uint16_t keycode)
+{
+    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+        for (uint8_t col = 0; col < MATRIX_COLS; col++) {
+            if (keymaps[action_layer][row][col] == keycode && (matrix[col] & (uint8_t)(1u << row))) {
+                link_hold_row = row;
+                link_hold_col = col;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+static bool link_hold_key_down(void)
+{
+    return (matrix[link_hold_col] & (uint8_t)(1u << link_hold_row)) != 0;
+}
 #endif
 
 #ifdef USJIS
@@ -268,13 +355,15 @@ bool kb_process_record(uint16_t keycode, bool key_pressed)
                     keyboard_state.rf_link   = (uint8_t)mode;
                     keyboard_state.connected = 1;
                     keyboard_state.paired    = 1;
-                    link_hold_keycode        = keycode;
-                    link_hold_since          = tick_scans();
-                    link_pairing_armed       = true;
+                    link_hold_cancel();
+                    if (link_hold_locate(keycode)) {
+                        link_hold_keycode  = keycode;
+                        link_hold_since    = tick_scans();
+                        link_pairing_armed = true;
+                    }
                 } else {
                     if (link_hold_keycode == keycode) {
-                        link_hold_keycode  = 0;
-                        link_pairing_armed = false;
+                        link_hold_cancel();
                     }
                 }
             }
@@ -347,6 +436,10 @@ uint16_t ticks = 0;
 void kb_update()
 {
 #ifdef RF_ENABLED
+    if (link_pairing_armed && !link_hold_key_down()) {
+        link_hold_cancel(); // the link key went up, whatever its release resolved to
+    }
+
     if (user_keyboard_state.conn_mode == KEYBOARD_CONN_MODE_RF) {
         if (link_pairing_armed && link_hold_keycode) {
             if ((uint16_t)(tick_scans() - link_hold_since) >= LINK_PAIRING_HOLD_SCANS) {

@@ -61,7 +61,18 @@ static void restore_settings(void)
 #ifdef RF_ENABLED
 static void restore_rf_link(void)
 {
+#ifdef RF_USB_MODE_AT_BOOT
+    // Booted with the slider on USB: tell the radio USB mode, as a slider
+    // change to USB does, instead of linking it to the saved slot (a bonded
+    // host would stay connected while the keyboard types over USB).
+    if (kb_conn_mode_is_usb()) {
+        rf_apply_usb_mode();
+    } else {
+        rf_set_link((rf_mode_t)user_settings.rf_link);
+    }
+#else
     rf_set_link((rf_mode_t)user_settings.rf_link);
+#endif
 
     keyboard_state.rf_link   = user_settings.rf_link;
     keyboard_state.connected = 1;

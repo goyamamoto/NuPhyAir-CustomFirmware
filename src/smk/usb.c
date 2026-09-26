@@ -455,6 +455,13 @@ void usb_send_extra(__xdata report_extra_t *report)
     usb_hw_ep2_in_send(report->raw, EXTRA_REPORT_SIZE);
 }
 
+#ifdef USB_REMOTE_WAKEUP_STRICT
+bool usb_may_signal_resume(void)
+{
+    return usb_suspended && usb_remote_wakeup;
+}
+#endif
+
 void usb_wait_for_enumeration(void)
 {
     for (uint16_t ms = 0; ms < ENUM_GIVE_UP_MS; ms++) {
@@ -717,6 +724,9 @@ void usb_irq_dispatch(void)
                 usb_setup_irq();
             } else if (temp_usbif1 & _RESMIF) { // RESMIF
                 USBIF1 &= ~_RESMIF;
+#ifdef USB_REMOTE_WAKEUP_STRICT
+                usb_suspended = 0; // the host is resuming the bus: the suspend is over
+#endif
             } else if (temp_usbif1 & _SUSPIF) { // SUSPIF
                 USBIF1 &= ~_SUSPIF;
                 if (usb_device_state == USB_DEVICE_STATE_CONFIGURED) {

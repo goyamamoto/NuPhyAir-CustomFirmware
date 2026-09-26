@@ -21,7 +21,7 @@ import subprocess
 import threading
 import time
 
-from sim import find_firmware, find_sim, load_symbols
+from sim import find_firmware, find_sim, load_symbols, skip_or_fail
 from pathlib import Path
 
 # --- Air60 matrix wiring (src/keyboards/nuphy-air60/kbdef.h) ----------------
@@ -224,7 +224,7 @@ class Air60Sim(UcsimSession):
         # Firmware built before this symbol exists cannot exercise the path that
         # needs it; skip rather than fail so the harness can land ahead of it.
         if name not in self.sym:
-            raise unittest.SkipTest(f"firmware has no {name} yet")
+            skip_or_fail(f"firmware has no {name} yet")
         return self.sym[name]
 
     def _linker_sym(self, name):

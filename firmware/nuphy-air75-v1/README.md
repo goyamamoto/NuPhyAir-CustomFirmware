@@ -12,4 +12,4 @@ meson setup build-release --buildtype=release
 meson compile -C build-release nuphy-air75_ansi_smk.hex nuphy-air75_usjis_smk.hex
 ```
 
-Check a download with `shasum -a 256 -c SHA256SUMS`, back up the stock firmware, and write one image as the top-level README describes (`sinowisp write -d nuphy-air75 --force <image>`). The `usjis` image is checked on the board; the `ansi` layout is checked on the board as a debug build, and its release image in the simulator.
+Check a download with `shasum -a 256 -c SHA256SUMS`, back up the stock firmware, and write one image as the top-level README describes (`sinowisp write -d nuphy-air75 --force <image>`). The `usjis` image is checked on the board; the `ansi` image is checked in the simulator (the `ansi` layout itself was checked on the board in an earlier build).

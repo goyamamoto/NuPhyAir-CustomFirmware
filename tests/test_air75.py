@@ -11,18 +11,19 @@ repo root after building the firmware:
 SMK_AIR75_FIRMWARE overrides the .hex. TestStockBootloaderChain also needs the
 stock ISP bootloader, which this repository does not ship: point
 SMK_AIR75_STOCK_JTAG at a physical-layout dump of an Air75 (only 0xF000-0xFFFF
-is used) and keep sinowisp on PATH; without them those tests are skipped.
+is used); without it those tests are skipped. The image is put into the
+physical layout by to_jtag() below, the conversion `sinowisp convert
+--direction to_jtag` does, so the tests never run sinowisp.
 """
 
 import os
 import re
 import shutil
-import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 
-from sim import REPO_ROOT, Sim, load_symbols
+from sim import REPO_ROOT, Sim, load_symbols, skip_or_fail
 from devices import Air60Sim, KeyMatrix, P5, P7
 
 # The usjis layout carries every feature; most tests run on it. The ansi
@@ -47,10 +48,10 @@ MOD_RCTL, MOD_RSFT, MOD_RALT, MOD_RGUI = 0x10, 0x20, 0x40, 0x80
 
 def _need_firmware():
     if not Path(AIR75_FW).exists():
-        raise unittest.SkipTest(f"no nuphy-air75 firmware at {AIR75_FW}")
+        skip_or_fail(f"no nuphy-air75 firmware at {AIR75_FW}")
     reason = Sim(AIR75_FW).available()   # not Sim(): that looks for build/'s Air60 image
     if reason:
-        raise unittest.SkipTest(reason)
+        skip_or_fail(reason)
 
 
 class Air75KeyMatrix(KeyMatrix):
@@ -166,6 +167,31 @@ def read_ihex(path):
     return data
 
 
+FIRMWARE_SIZE = 0xF000    # SH68F90: 64 KB flash less the 4 KB ISP bootloader
+
+
+def to_jtag(image):
+    """The physical flash layout of an ISP-layout image, as `sinowisp convert
+    --direction to_jtag` makes it (sinowisp 2.1.0, util.rs
+    convert_to_jtag_payload): zero-filled to 0xF000, the reset vector pointed
+    at the bootloader (LJMP 0xF000) and the firmware's own LJMP moved to 0xEFFB,
+    the marker the bootloader checks. `image` is {address: byte}."""
+    data = bytearray(FIRMWARE_SIZE)
+    for a, b in image.items():
+        if a >= FIRMWARE_SIZE:
+            raise ValueError("image byte at 0x%04x, past the firmware area" % a)
+        data[a] = b
+    if data[0] != 0x02:
+        raise ValueError("no LJMP at 0x0000")
+    entry = data[1:3]
+    if int.from_bytes(entry, "big") > 0xEFFF:
+        raise ValueError("reset vector points into the bootloader")
+    data[1:3] = FIRMWARE_SIZE.to_bytes(2, "big")
+    data[FIRMWARE_SIZE - 5] = 0x02
+    data[FIRMWARE_SIZE - 4:FIRMWARE_SIZE - 2] = entry
+    return bytes(data)
+
+
 class TestImage(unittest.TestCase):
     """Checks on the .hex that will be written with `sinowisp write --force`."""
 
@@ -174,7 +200,7 @@ class TestImage(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         if not Path(AIR75_FW).exists():
-            raise unittest.SkipTest(f"no nuphy-air75 firmware at {AIR75_FW}")
+            skip_or_fail(f"no nuphy-air75 firmware at {AIR75_FW}")
         cls.data = read_ihex(AIR75_FW)
 
     def test_code_stays_below_the_settings_sector(self):
@@ -577,7 +603,7 @@ class TestAnsiLayout(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         if not Path(AIR75_ANSI_FW).exists():
-            raise unittest.SkipTest(f"no nuphy-air75 ansi firmware at {AIR75_ANSI_FW}")
+            skip_or_fail(f"no nuphy-air75 ansi firmware at {AIR75_ANSI_FW}")
         _need_firmware()
 
     def _session(self, mac):
@@ -627,16 +653,9 @@ class TestStockBootloaderChain(unittest.TestCase):
         stock = os.environ.get("SMK_AIR75_STOCK_JTAG")
         if not stock or not Path(stock).exists():
             raise unittest.SkipTest("set SMK_AIR75_STOCK_JTAG to a physical-layout Air75 dump")
-        sinowisp = shutil.which("sinowisp")
-        if not sinowisp:
-            raise unittest.SkipTest("sinowisp not on PATH")
         cls.tmp = tempfile.TemporaryDirectory()
         tmp = Path(cls.tmp.name)
-        fw_bin = tmp / "fw_jtag.bin"
-        subprocess.run([sinowisp, "convert", "-d", "nuphy-air75", "--direction", "to_jtag",
-                        "--output_format", "bin", AIR75_FW, str(fw_bin)],
-                       check=True, capture_output=True)
-        image = bytearray(fw_bin.read_bytes().ljust(0xF000, b"\xff"))
+        image = bytearray(to_jtag(read_ihex(AIR75_FW)))
         image += Path(stock).read_bytes()[0xF000:0x10000]
         assert len(image) == 0x10000
         cls.image = image
@@ -683,6 +702,20 @@ class TestStockBootloaderChain(unittest.TestCase):
         kb.cmd("set mem rom 0xeffb 0xff")
         stop = kb.run_until(BL_MARKER_OK, BL_NO_MARKER, kb._a("kb_update_switches"))
         self.assertEqual(stop, BL_NO_MARKER)
+
+
+class TestJtagStandIn(unittest.TestCase):
+    """to_jtag() against the stock image: the stock restore image (ISP layout,
+    what `sinowisp read` gave, 0x0000-0xEFFF) converted must equal the stock
+    flash read over JTAG. Needs SMK_AIR75_STOCK_JTAG and SMK_AIR75_STOCK_RESTORE
+    (restore/air75v1_stock_firmware.hex in the analysis repository)."""
+
+    def test_stock_restore_image_converts_to_the_stock_flash(self):
+        jtag = os.environ.get("SMK_AIR75_STOCK_JTAG")
+        restore = os.environ.get("SMK_AIR75_STOCK_RESTORE")
+        if not (jtag and restore and Path(jtag).exists() and Path(restore).exists()):
+            raise unittest.SkipTest("set SMK_AIR75_STOCK_JTAG and SMK_AIR75_STOCK_RESTORE")
+        self.assertEqual(to_jtag(read_ihex(restore)), Path(jtag).read_bytes()[:FIRMWARE_SIZE])
 
 
 if __name__ == "__main__":

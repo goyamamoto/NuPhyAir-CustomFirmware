@@ -11,6 +11,7 @@ Override targets with env vars SMK_UCSIM (simulator) and SMK_FIRMWARE (.hex).
 
 import unittest
 
+from sim import skip_or_fail
 from sim import (
     Sim, get_descriptor,
     DESC_DEVICE, DESC_CONFIGURATION, DESC_STRING,
@@ -29,7 +30,7 @@ DEVICE_DESC_HEADER = [0x12, 0x01, 0x10, 0x01, 0x00, 0x00, 0x00, 0x08]
 def setUpModule():
     reason = SIM.available()
     if reason:
-        raise unittest.SkipTest(reason)
+        skip_or_fail(reason)
 
 
 class TestUsbInterrupt(unittest.TestCase):

@@ -30,6 +30,13 @@ uint8_t action_layer;
 
 uint8_t default_layer;
 
+#ifdef LATCH_KEYCODES
+// The keycode each key went down with, so its release undoes exactly that even
+// if Fn or the base layer changed in between (a key held across Fn would
+// otherwise be released as its other-layer keycode and stay stuck on the host).
+static __xdata uint16_t latched_keycode[MATRIX_ROWS][MATRIX_COLS];
+#endif
+
 void matrix_init()
 {
     action_layer   = 0;
@@ -114,11 +121,24 @@ static void process_key_state(uint8_t row, uint8_t col, bool pressed)
 #ifdef APPLE_FN
             report_apple_fn_hold(false);
 #endif
+#ifdef LATCH_KEYCODES
+            send_keyboard_report(); // the host must see the cleared keys go up now
+#endif
         }
         return;
     }
 
+#ifdef LATCH_KEYCODES
+    uint16_t qcode;
+    if (pressed) {
+        qcode                     = resolve_keycode(base, row, col);
+        latched_keycode[row][col] = qcode;
+    } else {
+        qcode = latched_keycode[row][col];
+    }
+#else
     const uint16_t qcode = resolve_keycode(base, row, col);
+#endif
 
 #ifdef TAP_HOLD
     if (tap_hold_process(row, col, qcode, pressed)) {
@@ -142,6 +162,14 @@ void process_keycode(uint16_t qcode, bool pressed)
     send_keycode(qcode, pressed);
 }
 
+#ifdef SCAN_DELAY_NO_WDT_KICK
+// The scan runs in the Timer2 interrupt; delay_us() kicks the watchdog, which
+// would keep a hung main loop from being reset.
+#    define scan_settle_us(us) delay_us_no_kick(us)
+#else
+#    define scan_settle_us(us) delay_us(us)
+#endif
+
 void matrix_scan_full(void)
 {
     indicators_pwm_disable();
@@ -154,9 +182,9 @@ void matrix_scan_full(void)
     for (uint8_t col = 0; col < MATRIX_COLS; col++) {
         user_matrix_col_select(col);
 
-        delay_us(10); // let the row lines settle before sampling
+        scan_settle_us(10); // let the row lines settle before sampling
         const uint8_t sample1 = user_matrix_read_rows();
-        delay_us(10);
+        scan_settle_us(10);
         const uint8_t sample2 = user_matrix_read_rows();
 
         if (sample1 == sample2) {

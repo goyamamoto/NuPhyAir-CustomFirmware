@@ -134,7 +134,10 @@ The tests need the patched simulator (from `nix develop` or the macOS script) an
 export SMK_AIR75_FIRMWARE=build-release/nuphy-air75_usjis_smk.hex SMK_AIR75_ANSI_FIRMWARE=build-release/nuphy-air75_ansi_smk.hex
 python3 -m unittest discover -s tests -p test_air75.py        # board tests (both layouts)
 python3 -m unittest discover -s tests -p test_air75_usjis.py  # US-JIS tests (a few minutes)
+python3 -m unittest discover -s tests -p test_air75_fixes.py  # review fixes (keys across Fn, pairing, radio, watchdog, wakeup)
 ```
+
+`meson test -C build-release` runs every test file against that build directory's own images and fails, rather than skips, when an image is missing.
 
 Technical notes for the board (pins, Apple fn, US-JIS, mod-taps, boot escape) are in [docs/keyboards/nuphy-air75.md](docs/keyboards/nuphy-air75.md). The upstream smk README is kept in [docs/README-smk.md](docs/README-smk.md).
 
@@ -148,9 +151,9 @@ Technical notes for the board (pins, Apple fn, US-JIS, mod-taps, boot escape) ar
 
 Based on smk at [69373bb](https://github.com/carlossless/smk/commit/69373bbb633bd1159f4541f486ff7506563a38ec) (2026-09-16); changes made in 2026-09.
 
-- New board: `src/keyboards/nuphy-air75/` (layouts `ansi` and `usjis`), `docs/keyboards/nuphy-air75.md`, `tests/test_air75.py`, `tests/test_air75_usjis.py`
-- New optional features, off unless a board enables them: US-JIS (`src/smk/usjis.c/.h`, `USJIS`), mod-tap keys (`src/smk/tap_hold.c/.h`, `TAP_HOLD`, plus `MT()` helpers in `src/smk/keycodes.h`), Apple fn byte (`APPLE_FN`: `src/smk/report.c/.h`, `src/smk/usb.c`, `src/smk/keyboard.c`, `src/smk/matrix.c`, RF byte 9 in `src/peripherals/bk3632/rf_controller.c`), per-slot Bluetooth names (`RF_BT_NAME`, `rf_controller.c`), boot escape (`BOOT_ESCAPE`: `src/main.c`, `src/user/user_init.h`), `defines` options per keyboard and per layout (`meson.build`)
-- Shared changes: `tick_scans()` scan counter (`src/smk/tick.c/.h`), `process_keycode()` split out of the matrix (`src/smk/matrix.c/.h`), board hook `kb_layer_is_apple_fn()` (`src/kb/kb.h`), settings field for US-JIS (`src/smk/settings.c/.h`), debug-build logging of SET_REPORT/LED requests (`src/smk/usb.c`), the simulator reading P7.0/P7.5/P7.7 as pins (`tools/ucsim/sh68f90.cc`), the Air75 in `src/keyboards/meson.build`
+- New board: `src/keyboards/nuphy-air75/` (layouts `ansi` and `usjis`), `docs/keyboards/nuphy-air75.md`, `tests/test_air75.py`, `tests/test_air75_usjis.py`, `tests/test_air75_fixes.py`
+- New optional features, off unless a board enables them: US-JIS (`src/smk/usjis.c/.h`, `USJIS`), mod-tap keys (`src/smk/tap_hold.c/.h`, `TAP_HOLD`, plus `MT()` helpers in `src/smk/keycodes.h`), Apple fn byte (`APPLE_FN`: `src/smk/report.c/.h`, `src/smk/usb.c`, `src/smk/keyboard.c`, `src/smk/matrix.c`, RF byte 9 in `src/peripherals/bk3632/rf_controller.c`), per-slot Bluetooth names (`RF_BT_NAME`, `rf_controller.c`), boot escape (`BOOT_ESCAPE`: `src/main.c`, `src/user/user_init.h`), `defines` options per keyboard and per layout (`meson.build`), keys released with the keycode they went down with (`LATCH_KEYCODES`: `src/smk/matrix.c`), radio retries that resend the frame and consumer/system reports retried until ACKed (`BK3632_TX_KEEPS_FRAME`, `BK3632_EXTRA_PENDING`: `src/peripherals/bk3632/`), a matrix scan that does not kick the watchdog (`SCAN_DELAY_NO_WDT_KICK`: `src/sino51lib/delay.c/.h`, `src/smk/matrix.c`), USB mode for the radio at a USB-position boot (`RF_USB_MODE_AT_BOOT`: `src/main.c`, board hook `kb_conn_mode_is_usb()` in `src/kb/kb.h`), remote wakeup only when the host enabled it (`USB_REMOTE_WAKEUP_STRICT`: `src/smk/usb.c/.h`, `src/sino51lib/sh68f90/power.c`)
+- Shared changes: `tick_scans()` scan counter (`src/smk/tick.c/.h`), `process_keycode()` split out of the matrix (`src/smk/matrix.c/.h`), board hook `kb_layer_is_apple_fn()` (`src/kb/kb.h`), settings field for US-JIS (`src/smk/settings.c/.h`), debug-build logging of SET_REPORT/LED requests (`src/smk/usb.c`), the simulator reading P7.0/P7.5/P7.7 as pins and logging gaps between watchdog kicks (`tools/ucsim/sh68f90.cc`) and polling its command socket every 1 ms (`tools/ucsim/idle-poll.patch`), `meson test` per test file and strict (`meson.build`, `tests/`), the Air75 in `src/keyboards/meson.build`
 - `README.md` replaced by this file; the upstream one moved to `docs/README-smk.md`. New: `README.ja.md`, `firmware/`, `tools/macos/`
 
 ## Credits and license

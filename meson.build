@@ -113,6 +113,8 @@ lib_user = custom_target(
     command : [sdar, sdar_args, '@OUTPUT@', '@INPUT@'],
 )
 
+board_hexes = {}
+
 foreach keyboard, board : keyboards
     platform = board['platform']
     if not platforms.has_key(platform)
@@ -280,6 +282,8 @@ foreach keyboard, board : keyboards
             depends : hex_smk,
         )
 
+        board_hexes += {prefix + 'smk.hex' : hex_smk}
+
         message('target available: @0@, flash: @1@'.format(hex_smk_target_name, flash_target_name))
     endforeach
 endforeach
@@ -343,13 +347,42 @@ alias_target('examples', example_hexes)
 sim = find_program('ucsim-sh68f90', required : false)
 py = find_program('python3', required : false)
 if sim.found() and py.found()
-    test(
-        'sim-tests',
-        py,
-        args : ['-m', 'unittest', 'discover', '-s', join_paths(dir_base, 'tests'), '-t', join_paths(dir_base, 'tests')],
-        env : {'SMK_UCSIM' : sim.full_path()},
-        # full suite is ~30s locally and most tests boot through real init;
-        # bump well above the meson 30s default so slower CI runners pass.
-        timeout : 300,
-    )
+    # One test per file, each pointed at THIS build directory's images (so
+    # `meson test -C build-release` tests the release images), and strict: a
+    # board test whose image is missing fails instead of skipping. The stock
+    # bootloader chain tests run when SMK_AIR75_STOCK_JTAG is set outside.
+    build_dir = meson.current_build_dir()
+    sim_env = {
+        'SMK_UCSIM' : sim.full_path(),
+        'SMK_TESTS_STRICT' : '1',
+        'SMK_FIRMWARE' : build_dir / 'nuphy-air60_default_smk.hex',
+        'SMK_AIR75_FIRMWARE' : build_dir / 'nuphy-air75_usjis_smk.hex',
+        'SMK_AIR75_ANSI_FIRMWARE' : build_dir / 'nuphy-air75_ansi_smk.hex',
+    }
+    sim_tests = {
+        'test_usb' : ['nuphy-air60_default_smk.hex'],
+        'test_boot' : ['nuphy-air60_default_smk.hex'],
+        'test_stack' : ['nuphy-air60_default_smk.hex'],
+        'test_source_breakpoints' : ['nuphy-air60_default_smk.hex'],
+        'test_air75' : ['nuphy-air75_usjis_smk.hex', 'nuphy-air75_ansi_smk.hex'],
+        'test_air75_usjis' : ['nuphy-air75_usjis_smk.hex', 'nuphy-air75_ansi_smk.hex'],
+        'test_air75_fixes' : ['nuphy-air75_usjis_smk.hex', 'nuphy-air75_ansi_smk.hex'],
+    }
+    foreach name, hexes : sim_tests
+        deps = []
+        foreach h : hexes
+            deps += board_hexes[h]
+        endforeach
+        test(
+            name,
+            py,
+            args : ['-m', 'unittest', name],
+            workdir : dir_base / 'tests',
+            env : sim_env,
+            depends : deps,
+            # every key event is a simulator round trip; the board files take
+            # several minutes on macOS.
+            timeout : 3600,
+        )
+    endforeach
 endif

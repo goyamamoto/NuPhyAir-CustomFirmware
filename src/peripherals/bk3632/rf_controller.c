@@ -55,7 +55,9 @@ bool    rf_send_kro_report(uint8_t *buffer);
 void    rf_send_nkro_report(uint8_t mods, __xdata uint8_t *nkro_buffer);
 void    rf_cmd_03(uint8_t param);
 void    rf_cmd_04();
-void    rf_send_consumer_system(uint16_t consumer, uint16_t system);
+#ifndef BK3632_EXTRA_PENDING
+void rf_send_consumer_system(uint16_t consumer, uint16_t system);
+#endif
 void    rf_cmd_06(uint8_t param);
 void    rf_sleep(uint8_t param);
 void    rf_set_bt_name(uint8_t type, char *name);
@@ -184,8 +186,23 @@ void rf_send_report(__xdata report_keyboard_t *report)
     rf_send_pending_flush();
 }
 
+#ifdef BK3632_EXTRA_PENDING
+// A consumer/system report that got no ACK is sent again from the main loop,
+// like a keyboard report, so a volume key release is not lost. Only the latest
+// state is kept: a newer report replaces one still pending.
+static uint16_t rf_pending_consumer;
+static uint16_t rf_pending_system;
+static bool     rf_extra_pending;
+static bool     rf_send_consumer_system_acked(uint16_t consumer, uint16_t system);
+#endif
+
 void rf_send_pending_flush(void)
 {
+#ifdef BK3632_EXTRA_PENDING
+    if (rf_extra_pending && rf_send_consumer_system_acked(rf_pending_consumer, rf_pending_system)) {
+        rf_extra_pending = false;
+    }
+#endif
     if (!rf_pending) return;
     if (rf_send_kro_report(rf_pending_buf)) {
         rf_pending = false;
@@ -213,6 +230,22 @@ void rf_send_nkro(__xdata report_nkro_t *report)
 
 void rf_send_extra(__xdata report_extra_t *report)
 {
+#ifdef BK3632_EXTRA_PENDING
+    switch (report->report_id) {
+        case REPORT_ID_SYSTEM:
+            rf_pending_consumer = 0;
+            rf_pending_system   = report->usage;
+            break;
+        case REPORT_ID_CONSUMER:
+            rf_pending_consumer = report->usage;
+            rf_pending_system   = 0;
+            break;
+        default:
+            return;
+    }
+    rf_extra_pending = true;
+    rf_send_pending_flush();
+#else
     switch (report->report_id) {
         case REPORT_ID_SYSTEM:
             rf_send_consumer_system(0, report->usage);
@@ -221,6 +254,7 @@ void rf_send_extra(__xdata report_extra_t *report)
             rf_send_consumer_system(report->usage, 0);
             break;
     }
+#endif
 }
 
 bool rf_update_keyboard_state(keyboard_state_t *keyboard)
@@ -315,6 +349,9 @@ void rf_kbd_lazy_state_init(void)
     lazy_init_pending = true;
     kro_prev_active   = 0;
     blanking_pending  = 0;
+#ifdef BK3632_EXTRA_PENDING
+    rf_extra_pending = false; // nothing left over from before the radio was in use
+#endif
 }
 
 void rf_blanking_tick(void)
@@ -577,7 +614,11 @@ void rf_cmd_04()
     bb_spi_xfer(rf_tx_buf, 4);
 }
 
+#ifdef BK3632_EXTRA_PENDING
+static bool rf_send_consumer_system_acked(uint16_t consumer, uint16_t system)
+#else
 void rf_send_consumer_system(uint16_t consumer, uint16_t system)
+#endif
 {
     const uint8_t len = 14;
 
@@ -597,7 +638,11 @@ void rf_send_consumer_system(uint16_t consumer, uint16_t system)
 
     rf_tx_buf[len - 1] = checksum(rf_tx_buf, len - 1);
 
+#ifdef BK3632_EXTRA_PENDING
+    return rf_send_or_retry(rf_tx_buf, len);
+#else
     rf_send_or_retry(rf_tx_buf, len);
+#endif
 }
 
 void rf_cmd_06(uint8_t param) // 0x00 or 0x01

@@ -30,6 +30,12 @@ void usb_irq_dispatch(void);
 
 extern __bit usb_suspended;
 
+#ifdef USB_REMOTE_WAKEUP_STRICT
+// True if resume signalling (USBCON.WKUP) is allowed now: the bus is still
+// suspended and the host has enabled remote wakeup (SET_FEATURE).
+bool usb_may_signal_resume(void);
+#endif
+
 #if DEBUG == 1
 bool usb_console_ready(void);
 void usb_console_send(const __xdata uint8_t *data, uint8_t len);

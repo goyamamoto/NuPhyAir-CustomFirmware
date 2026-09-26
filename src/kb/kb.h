@@ -22,3 +22,8 @@ void kb_usjis_mode_changed(bool enabled);
 // True for the momentary layer that stands for the Apple fn key (the Mac Fn layer).
 bool kb_layer_is_apple_fn(uint8_t layer);
 #endif
+
+#ifdef RF_USB_MODE_AT_BOOT
+// True while the connection slider is (debounced) on USB.
+bool kb_conn_mode_is_usb(void);
+#endif

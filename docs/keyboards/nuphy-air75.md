@@ -15,8 +15,8 @@ The pin map comes from static analysis of the stock firmware, not from the PCB.
 
 - [x] Key Scan (every key checked on an Air75 with a Mac host, and in the simulator)
 - [x] RGB Matrix (every key and the side lights, checked on an Air75; settings persist across power cycles)
-- [x] Wireless: Bluetooth (BLE) and the 2.4G dongle both work on an Air75 with a Mac host; over BLE it pairs and types, the battery level shows, and the Apple fn byte works. Bluetooth 1 is the default link (after a flash or a factory reset)
-- [x] Sleep (the Air60 parking sequence plus the stock Air75 extras): on Bluetooth after about 5 minutes idle, waking on a key and reconnecting; over USB when the host sleeps, resuming with it. Checked on an Air75
+- [x] Wireless: Bluetooth (BLE) and the 2.4G dongle both work on an Air75 with a Mac host; over BLE it pairs and types, the battery level shows, and the Apple fn byte works. Bluetooth 1 is the default link (after a flash or a factory reset). A boot with the slider on USB puts the radio in USB mode, as a slider change to USB does (`RF_USB_MODE_AT_BOOT`), and a key held while the slider moves goes up on the host being left. A frame the radio does not ACK is sent again unchanged, and consumer/system reports (volume, brightness) are retried like key reports (`BK3632_TX_KEEPS_FRAME`, `BK3632_EXTRA_PENDING`)
+- [x] Sleep (the Air60 parking sequence plus the stock Air75 extras): on Bluetooth after about 5 minutes idle, waking on a key and reconnecting; over USB when the host sleeps, resuming with it. Checked on an Air75. A key wakes a sleeping USB host only if the host enabled remote wakeup, and not while the host is already resuming the bus (`USB_REMOTE_WAKEUP_STRICT`)
 
 ## Boot escape
 
@@ -35,7 +35,8 @@ Two layouts share the board code: `ansi` is plain US ANSI; `usjis` adds US-JIS (
 - The two keys between F12 and Del send PrtSc and Insert (macOS shows them as F13 and Help; the stock firmware has screenshot and assistant shortcuts there)
 - Caps Lock and Left Ctrl are swapped on both base layers (Left Ctrl sits next to A)
 - The keys beside Space are mod-taps for the Japanese IME (`TAP_HOLD`): held, they are Command (Mac) or Alt (Win); tapped, they send LANG2/LANG1 (Eisu/Kana) on the Mac layer and INT5/INT4 (Muhenkan/Henkan) on the Win layer, left/right
-- Fn layer: Tab = US-JIS on/off (`usjis`; plain Tab in `ansi`), link keys (Q/W/E = BT1-3, R = 2.4G; hold about 6 s to pair (4400 matrix scans; the stock firmware takes 3-4 s)), battery indicator on `[ ] \`, lighting on the bottom-right cluster and `, . /` — the nuphy-air60 layout one row lower. The factory-reset chord is Fn+Esc held, then Fn+V
+- Fn layer: Tab = US-JIS on/off (`usjis`; plain Tab in `ansi`), link keys (Q/W/E = BT1-3, R = 2.4G; hold about 6 s to pair (4400 matrix scans; the stock firmware takes 3-4 s); the hold ends when the key goes up, whether Fn goes up first or not, and when the connection slider moves), battery indicator on `[ ] \`, lighting on the bottom-right cluster and `, . /` — the nuphy-air60 layout one row lower. The factory-reset chord is Fn+Esc held, then Fn+V
+- Keys across Fn (`LATCH_KEYCODES`): a key goes up with the keycode it went down with, so a key or a media key (Win Fn+F11) is never left held on the host whichever of it and Fn is released first. Releasing Fn releases every key that is not a modifier on the host at once (a key still held then sends nothing more when it goes up)
 - USB strings: manufacturer "SMK", product "Air75 (SMK)"
 - Bluetooth names: "Air75-1" .. "Air75-3" over BLE and "Air75-1 BT3.0" .. over classic Bluetooth, one per slot (`RF_BT_NAME`); a host shows which slot it paired with. The name is set just before switching to a slot, so a host that paired under an older name keeps showing it until it pairs again
 
@@ -69,13 +70,15 @@ meson setup build
 meson compile -C build nuphy-air75_usjis_smk.hex nuphy-air75_ansi_smk.hex
 python3 -m unittest discover -s tests -p test_air75.py        # board tests (simulator)
 python3 -m unittest discover -s tests -p test_air75_usjis.py  # US-JIS (simulator, a few minutes)
+python3 -m unittest discover -s tests -p test_air75_fixes.py  # review fixes: keys across Fn, pairing, radio, watchdog, wakeup
+meson test -C build                                           # every file, strict, on build/'s own images
 meson compile -C build nuphy-air75_usjis_flash            # sinowisp write -d nuphy-air75 --force
 ```
 
-`tests/test_air75.py` covers the boot escape, the matrix and keymap, and — when `SMK_AIR75_STOCK_JTAG` points at a stock dump — the whole chain through the stock bootloader: power-on into the firmware, Esc held into ISP mode, and a missing marker staying in the bootloader.
+`tests/test_air75_fixes.py` covers the defects found by the 2026-09-26 review, each with a check that fails on build-8 (5e0508e). `tests/test_air75.py` covers the boot escape, the matrix and keymap, and — when `SMK_AIR75_STOCK_JTAG` points at a stock dump — the whole chain through the stock bootloader: power-on into the firmware, Esc held into ISP mode, and a missing marker staying in the bootloader. The image is put into the physical layout by `to_jtag()`, a Python copy of `sinowisp convert --direction to_jtag`, so the tests never run sinowisp.
 
 After the first write, check both ways back before anything else: hold Esc and replug (the board must enumerate as 0603:1020), then `sinowisp read` over USB from the running firmware.
 
 ## Code Options
 
-Not stored in the flash image, so not read from the stock firmware. The watchdog being enabled by code option (as on the Air60) is what makes a firmware hang reset back into the boot escape.
+Not stored in the flash image, so not read from the stock firmware. The watchdog is believed enabled by code option, as on the Air60 (unverified), and its period is not known. Only the main loop and the delays it calls kick it: the matrix scan in the Timer2 interrupt settles its rows with `delay_us_no_kick()` (`SCAN_DELAY_NO_WDT_KICK`), and the LED redraw (`indicators_render()`, several ms) kicks once per LED. So a main loop that hangs with interrupts on is reset, and the board comes back up, where Esc held reaches the boot escape; in normal running the simulator sees no gap between kicks of 1 ms or more (build-8, which kicked from the scan: about 2 ms). A hang inside a loop that keeps calling `delay_us()` is not reset. The stock firmware kicks from its scan interrupt instead.

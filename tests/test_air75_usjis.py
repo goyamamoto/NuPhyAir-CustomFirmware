@@ -21,7 +21,7 @@ import unittest
 
 from pathlib import Path
 
-from sim import load_symbols
+from sim import load_symbols, skip_or_fail
 from test_air75 import AIR75_FW, Air75Sim, _need_firmware
 
 # Air75 matrix positions (col, row), from the default layout.
@@ -115,7 +115,7 @@ class UsjisCase(unittest.TestCase):
     def setUpClass(cls):
         _need_firmware()
         if "usjis_process_record" not in load_symbols(Path(AIR75_FW).with_suffix(".map")):
-            raise unittest.SkipTest(f"{AIR75_FW} is built without USJIS")
+            skip_or_fail(f"{AIR75_FW} is built without USJIS")
 
     def session(self, enabled=True, mac=False):
         kb = UsjisSim()

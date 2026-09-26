@@ -134,7 +134,10 @@
 export SMK_AIR75_FIRMWARE=build-release/nuphy-air75_usjis_smk.hex SMK_AIR75_ANSI_FIRMWARE=build-release/nuphy-air75_ansi_smk.hex
 python3 -m unittest discover -s tests -p test_air75.py        # ボードのテスト（両レイアウト）
 python3 -m unittest discover -s tests -p test_air75_usjis.py  # US-JIS のテスト（数分かかる）
+python3 -m unittest discover -s tests -p test_air75_fixes.py  # レビューで見つかった不具合の修正（Fn をまたぐキー、ペアリング、無線、ウォッチドッグ、復帰）
 ```
+
+`meson test -C build-release` は、すべてのテストファイルをそのビルドディレクトリのイメージで実行します。イメージがなければ飛ばさずに失敗にします。
 
 ボードの技術的な説明（ピン、Apple の fn、US-JIS、タップ／長押し、起動時の逃げ道）は [docs/keyboards/nuphy-air75.md](docs/keyboards/nuphy-air75.md)（英語）にあります。upstream の smk の README は [docs/README-smk.md](docs/README-smk.md) に残してあります。
 

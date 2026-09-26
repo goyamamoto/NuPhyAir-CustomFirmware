@@ -50,6 +50,7 @@ class cl_sh68f90_sie : public cl_hw
     int      miso_bitpos;                  // BK3632 SPI: bit cursor into the 4-byte status reply.
     unsigned wdt_acc;                      // watchdog: cycles since last RSTSTAT(0xb1) kick.
     bool     wdt_armed;                    // watchdog only enforced after the firmware kicks once.
+    unsigned long wdt_prev_pc;             // where the previous kick was (for the gap log).
 
     // External level present on each port's pins (what the board drives). An input
     // pin reads this, not its output latch; it idles high (== the internal pull-up
@@ -69,6 +70,7 @@ class cl_sh68f90_sie : public cl_hw
         cell_ibcon5 = cell_rststat = cell_pcon = 0;
         wdt_acc                                = 0;
         wdt_armed                              = false;
+        wdt_prev_pc                            = 0;
         cell_ep0con = cell_usbif2 = cell_iep0cnt = 0;
         cell_ep1con = cell_iep1cnt = 0;
         cell_ep2con = cell_iep2cnt = 0;
@@ -229,9 +231,17 @@ class cl_sh68f90_sie : public cl_hw
             }
         }
         // Watchdog kick: any RSTSTAT(0xb1) write (firmware writes 0) reloads the WDT.
+        // Gaps between kicks of 24000 cycles (1 ms at 24 MHz) or more are logged
+        // as "[SIE] WDTGAP <cycles> from <pc> to <pc>", so tests can bound them.
         if (cell == cell_rststat) {
-            wdt_acc   = 0;
-            wdt_armed = true;
+            if (!wdt_armed)
+                fprintf(stderr, "[SIE] WDT armed, gaps >= 24000 cycles logged\n");
+            else if (wdt_acc >= 24000u)
+                fprintf(stderr, "[SIE] WDTGAP %u from 0x%04lx to 0x%04lx\n", wdt_acc, wdt_prev_pc,
+                        (unsigned long)uc->PC);
+            wdt_prev_pc = (unsigned long)uc->PC;
+            wdt_acc     = 0;
+            wdt_armed   = true;
         }
         // Sleep: PCON(0x87) bit1 set = power-down/STOP (after SUSLO=0x55). The core
         // halts here until INT4 (matrix-wake) fires; the wake is injected from tick().

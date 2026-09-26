@@ -1,6 +1,7 @@
 #include "indicators.h"
 #include "kbdef.h"
 #include "gpio.h"
+#include "watchdog.h"
 #include "pwm.h"
 #include "settings.h"
 #include "tick.h"
@@ -299,7 +300,12 @@ void indicators_render()
     }
     render_dirty = false; // cleared first: a phase bump mid-render re-arms it
 
+    // A full redraw takes several ms. The watchdog is kicked by the main loop
+    // only (SCAN_DELAY_NO_WDT_KICK), so kick it per LED here, keeping the
+    // longest gap between kicks near build-8's (about 2 ms), when the Timer2
+    // scan still kicked it. The stock firmware kicks from its scan interrupt.
     for (uint8_t i = 0; i < (uint8_t)(LED_SCAN_ROWS * LED_COLS); i++) {
+        watchdog_kick();
         led_regen_one();
     }
 }

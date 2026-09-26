@@ -31,7 +31,7 @@
           nativeBuildInputs = with pkgs; [ bison flex ];
 
           # Register the SH68F90 as a uCsim CPU variant (-t sh68f90).
-          patches = [ ./tools/ucsim/sh68f90-register.patch ];
+          patches = [ ./tools/ucsim/sh68f90-register.patch ./tools/ucsim/idle-poll.patch ];
 
           postPatch = ''
             cp ${./tools/ucsim/sh68f90.cc}  sim/ucsim/src/sims/s51.src/sh68f90.cc

@@ -11,6 +11,9 @@ Override targets with env vars SMK_UCSIM (simulator) and SMK_FIRMWARE (.hex).
 
 import unittest
 
+from pathlib import Path
+
+from sim import skip_or_fail, load_symbols
 from sim import Sim
 from devices import Air60Sim
 
@@ -20,7 +23,10 @@ SIM = Sim()
 def setUpModule():
     reason = SIM.available()
     if reason:
-        raise unittest.SkipTest(reason)
+        skip_or_fail(reason)
+    # The banner goes to the debug console, which a release build leaves out.
+    if "console_task" not in load_symbols(Path(SIM.firmware).with_suffix(".map")):
+        raise unittest.SkipTest("release build: no debug console to carry the boot banner")
 
 
 class TestFullBoot(unittest.TestCase):

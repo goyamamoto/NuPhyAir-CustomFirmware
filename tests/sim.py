@@ -15,6 +15,18 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
+# `meson test` sets SMK_TESTS_STRICT=1 and points the SMK_*_FIRMWARE variables
+# at its own build directory: a missing image, simulator or firmware path is
+# then an error, not a skip.
+STRICT = os.environ.get("SMK_TESTS_STRICT") == "1"
+
+
+def skip_or_fail(reason):
+    import unittest
+    if STRICT:
+        raise RuntimeError("SMK_TESTS_STRICT: " + reason)
+    raise unittest.SkipTest(reason)
+
 
 def find_sim():
     # The patched simulator installs as `ucsim-sh68f90` (distinct from sdcc's

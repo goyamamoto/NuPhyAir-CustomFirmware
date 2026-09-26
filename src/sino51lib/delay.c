@@ -87,6 +87,62 @@ static void delay_iters(uint16_t cnt) __naked
     // clang-format on
 }
 
+#ifdef SCAN_DELAY_NO_WDT_KICK
+// The same loop without the watchdog kick, for delays inside an interrupt
+// handler: a kick there would keep the watchdog quiet while the main loop hangs.
+static void delay_iters_no_kick(uint16_t cnt) __naked
+{
+    (void)cnt;
+    // clang-format off
+    __asm
+        mov     r6, dpl                 ; 3c
+        mov     r7, dph                 ; 3c
+        cjne    r6, #0x00, 00098$       ; 4c/6c
+        cjne    r7, #0x00, 00097$       ; 4c/6c
+        sjmp    00099$                  ; 4c
+00098$:
+        inc     r7                      ; 2c
+00097$:
+        sjmp    00002$                  ; 4c
+00001$:
+        nop
+        nop
+        nop
+        nop
+        nop
+        nop
+        nop
+        nop
+        nop
+        nop
+        nop
+        nop
+        nop
+        nop
+        nop
+        nop
+        nop
+        nop
+        nop                             ; 19c    -- body total: 19c
+00002$:
+        djnz    r6, 00001$              ; 5c/3c
+        djnz    r7, 00001$              ; 5c/3c
+00099$:
+        ret                             ; 8c
+    __endasm;
+    // clang-format on
+}
+
+void delay_us_no_kick(uint16_t cnt)
+{
+    uint16_t iters = DELAY_ITERS(cnt);
+    if (iters == 0) {
+        return;
+    }
+    delay_iters_no_kick(iters);
+}
+#endif
+
 void delay_us(uint16_t cnt)
 {
     uint16_t iters = DELAY_ITERS(cnt);

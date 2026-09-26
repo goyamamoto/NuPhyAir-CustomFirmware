@@ -49,6 +49,7 @@ rm -rf ucsim45 && mkdir ucsim45 && tar xjf "$tarball" -C ucsim45
 (
     cd ucsim45/sdcc-4.5.0
     patch -p1 < "$smk/tools/ucsim/sh68f90-register.patch"
+    patch -p1 < "$smk/tools/ucsim/idle-poll.patch"
     cp "$smk/tools/ucsim/sh68f90.cc" "$smk/tools/ucsim/sh68f90cl.h" sim/ucsim/src/sims/s51.src/
     cd sim/ucsim
     flex -o src/core/cmd.src/cmdlex.cc src/core/cmd.src/cmdlex.l
