@@ -2,8 +2,8 @@
 """US-JIS substitution on the nuphy-air75, driven through the patched uCsim
 simulator with the real scan path (the key matrix is emulated test-side).
 
-The cases mirror the host tests of the QMK version (qmk-nuphy
-common/core/usjis.c): the C01-C20 table, identity when disabled or in Mac
+The cases mirror the host tests of the QMK version (qmk-firmware,
+keyboards/nuphy/common/core/usjis.c): the C01-C20 table, identity when disabled or in Mac
 mode, the Shift policy scenarios S02/S03/S05/S11-S14 report by report, Ctrl
 kept through a substitution, the Fn+Tab toggle with its saved setting and
 indicator, and a toggle postponed while a key is held. smk only sends a
